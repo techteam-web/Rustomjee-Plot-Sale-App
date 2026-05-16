@@ -14,7 +14,6 @@ export default function Header({ theme, onToggleTheme, onShowMasterplan, onOpenR
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
         <button className="hbtn-brand" onClick={onShowMasterplan}>Masterplan</button>
-        <button className="hbtn-brand" onClick={onOpenROI}>ROI Calculator</button>
         <button className="hbtn-brand primary" onClick={() => alert('Our advisor will contact you shortly. Thank you!')}>Book Site Visit</button>
       </div>
       <style>{`

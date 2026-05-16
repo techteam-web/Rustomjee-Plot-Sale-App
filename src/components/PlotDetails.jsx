@@ -3,26 +3,6 @@ import { formatCurrency, hdist } from '../utils';
 import { CITIES, AMEN } from '../data/plots';
 
 export default function PlotDetails({ plot, onClose }) {
-  const [roiYrs, setRoiYrs] = useState(5);
-  const [roiAppr, setRoiAppr] = useState(12);
-  const [roiYield, setRoiYield] = useState(3);
-  const [roiRes, setRoiRes] = useState({ fv: 0, cg: 0, ri: 0, tr: 0 });
-
-  useEffect(() => {
-    if (!plot) return;
-    const inv = plot.pr.total;
-    const yrs = roiYrs;
-    const rate = roiAppr / 100;
-    const rental = roiYield / 100;
-    const fv = inv * Math.pow(1 + rate, yrs);
-    setRoiRes({
-      fv,
-      cg: fv - inv,
-      ri: inv * rental * yrs,
-      tr: (fv - inv) + (inv * rental * yrs)
-    });
-  }, [plot, roiYrs, roiAppr, roiYield]);
-
   if (!plot) return null;
 
   const handleWA = () => {
@@ -51,29 +31,6 @@ export default function PlotDetails({ plot, onClose }) {
               <div>
                 <div className="pmain headline">{formatCurrency(plot.pr.total)}</div>
                 <div className="ppsf">₹{plot.pr.psf.toLocaleString()} per sqft</div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div className="ppi-l headline">Premium Score</div>
-                <div className="ppi-v subhead">{plot.pr.premium > 0 ? `+₹${plot.pr.premium}/sqft` : 'Base Rate'}</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="ps">
-            <div className="pst headline">Price Breakdown</div>
-            <div className="bdr">
-              {plot.pr.breakdown.map((row, i) => (
-                <div key={i} className="brow">
-                  <div className="blbl">{row.l}</div>
-                  <div className="bval" style={{ color: row.t === 'b' ? 'var(--brand-beige)' : row.v < 0 ? 'var(--brand-peach)' : 'var(--brand-green)' }}>
-                    ₹{Math.abs(row.v).toLocaleString()}/sqft{row.t !== 'b' ? (row.v > 0 ? ' ▲' : ' ▼') : ''}
-                  </div>
-                </div>
-              ))}
-              <div className="bdiv"></div>
-              <div className="brow">
-                <div className="blbl headline" style={{ color: 'var(--brand-white)' }}>Final Rate</div>
-                <div className="bval tot headline">₹{plot.pr.psf.toLocaleString()}</div>
               </div>
             </div>
           </div>
@@ -122,35 +79,11 @@ export default function PlotDetails({ plot, onClose }) {
             </div>
           </div>
 
-          <div className="ps" id="roi-section">
-            <div className="pst headline">Investment Projection</div>
-            <div className="roii">
-              <div className="roir">
-                <span className="roil">Period (yrs)</span>
-                <input className="roiinp headline" type="number" value={roiYrs} onChange={e => setRoiYrs(parseFloat(e.target.value))} />
-              </div>
-              <div className="roir">
-                <span className="roil">Appreciation (%)</span>
-                <input className="roiinp headline" type="number" value={roiAppr} onChange={e => setRoiAppr(parseFloat(e.target.value))} />
-              </div>
-            </div>
-            <div className="roigrid">
-              <div className="roic">
-                <div className="roicl headline">Future Value</div>
-                <div className="roicv headline gold">{formatCurrency(roiRes.fv)}</div>
-              </div>
-              <div className="roic">
-                <div className="roicl headline">Capital Gain</div>
-                <div className="roicv headline gold">{formatCurrency(roiRes.cg)}</div>
-              </div>
-            </div>
-          </div>
-
           <div className="ps" style={{ borderBottom: 'none', marginTop: 'auto' }}>
             <div className="actrow">
-              <button 
-                className="btn-brand primary flex-1" 
-                disabled={plot.status === 'sold'} 
+              <button
+                className="btn-brand primary flex-1"
+                disabled={plot.status === 'sold'}
                 onClick={() => alert(plot.status === 'reserved' ? `Added to waitlist for ${plot.name}.` : `Site visit for ${plot.name} scheduled.`)}
                 style={{ opacity: plot.status === 'sold' ? 0.4 : 1 }}
               >

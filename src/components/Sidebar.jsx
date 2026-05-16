@@ -23,28 +23,6 @@ export default function Sidebar({
   return (
     <div id="sb">
       <div className="sbs">
-        <div className="sbt headline">Project Overview</div>
-        <div className="sgrid">
-          <div className="sc">
-            <div className="sv">{plots.length}</div>
-            <div className="sl">Total Plots</div>
-          </div>
-          <div className="sc">
-            <div className="sv">{availableCount}</div>
-            <div className="sl">Available</div>
-          </div>
-          <div className="sc">
-            <div className="sv">35.6</div>
-            <div className="sl">Hectares</div>
-          </div>
-          <div className="sc">
-            <div className="sv">{(minPrice / 10000000).toFixed(2)}</div>
-            <div className="sl">From ₹ Cr</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="sbs">
         <div className="sbt headline">Map View</div>
         <div className="vtrow">
           <div className={`vt ${viewMode === '2D' ? 'on' : ''}`} onClick={() => setViewMode('2D')}>2D Map</div>
@@ -124,6 +102,28 @@ export default function Sidebar({
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="sbs" style={{ borderTop: '1px solid var(--border)', borderBottom: 'none' }}>
+        <div className="sbt headline">Project Overview</div>
+        <div className="sgrid">
+          <div className="sc">
+            <div className="sv">{plots.length}</div>
+            <div className="sl">Total Plots</div>
+          </div>
+          <div className="sc">
+            <div className="sv">{availableCount}</div>
+            <div className="sl">Available</div>
+          </div>
+          <div className="sc">
+            <div className="sv">35.6</div>
+            <div className="sl">Hectares</div>
+          </div>
+          <div className="sc">
+            <div className="sv">{(minPrice / 10000000).toFixed(2)}</div>
+            <div className="sl">From ₹ Cr</div>
+          </div>
+        </div>
       </div>
 
       <style>{`

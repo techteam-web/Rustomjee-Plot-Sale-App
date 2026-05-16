@@ -16,7 +16,7 @@ const processedPlots = PLOTS_RAW.map((p, i) => {
     road: ROAD_LIST[i],
     soldTo: STATUS_LIST[i] === 'sold' ? SOLD_NAMES[i % SOLD_NAMES.length] : null,
     pr,
-    cat: pr.premium > 800 ? 'Premium' : pr.premium > 400 ? 'Value+' : 'Standard',
+    cat: pr.premium > 1000 ? 'Imperial' : pr.premium > 750 ? 'Signature' : pr.premium > 500 ? 'Elite' : pr.premium > 250 ? 'Heritage' : 'Classic',
     idx: i + 1
   };
 });
