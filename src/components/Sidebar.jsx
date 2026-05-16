@@ -134,9 +134,9 @@ export default function Sidebar({
         .sbs { padding: 20px 24px; border-bottom: 1px solid var(--border); }
         .sbt { font-size: 11px; letter-spacing: 0.2em; color: var(--brand-gold); margin-bottom: 16px; font-weight: 600; }
         .sgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .sc { background: rgba(255,255,255,0.03); border: 1px solid var(--border); padding: 12px; transition: all 0.3s; }
-        .sc:hover { background: rgba(206, 154, 82, 0.05); border-color: var(--gold-b); }
-        .sv { font-size: 22px; font-family: 'Playfair Display', serif; color: var(--brand-white); font-weight: 600; }
+        .sc { background: var(--card-bg); border: 1px solid var(--border); padding: 12px; transition: all 0.3s; }
+        .sc:hover { background: var(--gold-p); border-color: var(--gold-b); }
+        .sv { font-size: 22px; font-family: 'Playfair Display', serif; color: var(--text-primary); font-weight: 600; }
         .sl { font-size: 9px; color: var(--gray); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px; }
         .vtrow { display: flex; gap: 1px; background: var(--gold-b); border: 1px solid var(--gold-b); }
         .vt { flex: 1; padding: 10px; text-align: center; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
@@ -146,7 +146,7 @@ export default function Sidebar({
         .legr { display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 4px 0; opacity: 0.7; transition: all 0.3s; }
         .legr:hover, .legr.active { opacity: 1; }
         .ld { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-        .ll { font-size: 12px; color: var(--brand-beige); letter-spacing: 0.05em; }
+        .ll { font-size: 12px; color: var(--text-secondary); letter-spacing: 0.05em; font-weight: 500; }
         .lc { margin-left: auto; font-size: 10px; color: var(--brand-gold); font-weight: 600; background: var(--gold-p); padding: 2px 8px; }
         .rrow { display: flex; justify-content: space-between; margin-bottom: 8px; }
         .rv { font-size: 12px; color: var(--brand-gold); font-weight: 600; font-family: 'Inter', sans-serif; }
@@ -154,16 +154,17 @@ export default function Sidebar({
         input[type=range] { width: 100%; accent-color: var(--brand-gold); height: 2px; cursor: pointer; position: absolute; top: 0; background: transparent; -webkit-appearance: none; }
         input[type=range]::-webkit-slider-runnable-track { background: var(--border); height: 2px; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 12px; width: 12px; border-radius: 50%; background: var(--brand-gold); margin-top: -5px; }
-        .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-        .chip { padding: 6px 12px; border: 1px solid var(--border); font-size: 10px; color: var(--lgray); cursor: pointer; transition: all 0.3s; text-transform: uppercase; letter-spacing: 0.1em; }
+        .chips { display: flex; gap: 6px; margin-top: 12px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+        .chips::-webkit-scrollbar { display: none; }
+        .chip { padding: 6px 10px; border: 1px solid var(--border); font-size: 9px; color: var(--text-muted); cursor: pointer; transition: all 0.3s; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; flex-shrink: 0; }
         .chip.on { border-color: var(--brand-gold); color: var(--brand-gold); background: var(--gold-p); }
         .chip:hover { border-color: var(--brand-gold); }
-        #plist { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.2); }
+        #plist { flex: 1; overflow-y: auto; background: var(--bg-secondary); }
         .pli { padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;
                cursor: pointer; border-bottom: 1px solid var(--border); transition: all 0.3s; }
-        .pli:hover { background: rgba(206, 154, 82, 0.03); }
+        .pli:hover { background: var(--gold-p); }
         .pli.on { background: var(--gold-p); border-left: 4px solid var(--brand-gold); }
-        .pln { font-size: 14px; font-weight: 600; color: var(--brand-white); }
+        .pln { font-size: 14px; font-weight: 600; color: var(--text-primary); }
         .plm { font-size: 11px; color: var(--gray); margin-top: 4px; }
         .plp { font-size: 14px; color: var(--brand-gold); font-weight: 600; text-align: right; }
         .pls { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px; text-align: right; font-weight: 700; }

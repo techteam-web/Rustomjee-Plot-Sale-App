@@ -28,6 +28,13 @@ function App() {
   const [sizeChip, setSizeChip] = useState('all');
   const [viewMode, setViewMode] = useState('2D');
   const [showMasterplan, setShowMasterplan] = useState(false);
+  const [theme, setTheme] = useState('dark');
+
+  React.useEffect(() => {
+    document.body.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
   const filteredPlots = useMemo(() => {
     let fp = [...processedPlots];
@@ -49,6 +56,8 @@ function App() {
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <Header 
+        theme={theme}
+        onToggleTheme={toggleTheme}
         onShowMasterplan={() => setShowMasterplan(true)} 
         onOpenROI={() => {
           if (!activePlot) alert('Please select a plot first to open the ROI calculator.');
@@ -70,6 +79,7 @@ function App() {
           onPlotClick={(p) => setActivePlot(p.name)}
           viewMode={viewMode}
           setViewMode={setViewMode}
+          theme={theme}
         />
         
         <Map 
@@ -78,21 +88,24 @@ function App() {
           activePlot={activePlot}
           onPlotClick={(p) => setActivePlot(p.name)}
           viewMode={viewMode}
+          theme={theme}
         />
         
         <PlotDetails 
           plot={selectedPlotData} 
           onClose={() => setActivePlot(null)} 
+          theme={theme}
         />
       </div>
 
       <MasterplanModal 
         show={showMasterplan} 
         onClose={() => setShowMasterplan(false)} 
+        theme={theme}
       />
 
       <style>{`
-        #app { display: flex; height: 100vh; padding-top: 56px; }
+        #app { display: flex; height: 100vh; padding-top: 64px; }
       `}</style>
     </div>
   );

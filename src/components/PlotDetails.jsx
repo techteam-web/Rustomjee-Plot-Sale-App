@@ -164,18 +164,18 @@ export default function PlotDetails({ plot, onClose }) {
 
       <style>{`
         #panel {
-          width: 0; min-width: 0; background: var(--brand-black);
+          width: 0; min-width: 0; background: var(--bg-primary);
           border-left: 1px solid var(--gold-b);
           overflow: hidden; transition: width .4s cubic-bezier(.4,0,.2,1);
           display: flex; flex-direction: column; z-index: 200;
         }
-        #panel.open { width: 380px; min-width: 380px; }
-        .pi { width: 380px; overflow-y: auto; height: 100%; display: flex; flex-direction: column; }
-        .phero { height: 180px; position: relative; overflow: hidden; background: linear-gradient(180deg, #111, #000); border-bottom: 1px solid var(--gold-b); display: flex; align-items: flex-end; padding: 24px; }
-        .phnum { position: absolute; top: -10px; right: 10px; font-size: 100px; color: rgba(206, 154, 82, 0.05); font-weight: 900; line-height: 1; pointer-events: none; }
-        .phx { position: absolute; top: 20px; right: 20px; width: 32px; height: 32px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--brand-gold); z-index: 2; transition: all 0.3s; }
-        .phx:hover { background: var(--brand-gold); color: var(--brand-black); }
-        .phn { font-size: 24px; font-weight: 700; color: var(--brand-white); position: relative; z-index: 1; margin-bottom: 4px; }
+        #panel.open { width: 400px; min-width: 400px; }
+        .pi { width: 400px; overflow-y: auto; height: 100%; display: flex; flex-direction: column; background: var(--bg-primary); }
+        .phero { min-height: 200px; position: relative; overflow: hidden; background: var(--bg-secondary); border-bottom: 1px solid var(--gold-b); display: flex; align-items: flex-end; padding: 24px; padding-top: 40px; }
+        .phnum { position: absolute; top: 10px; right: 10px; font-size: 80px; color: var(--gold-p); font-weight: 900; line-height: 1; pointer-events: none; opacity: 0.8; }
+        .phx { position: absolute; top: 20px; right: 20px; width: 32px; height: 32px; background: var(--card-bg); border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--brand-gold); z-index: 2; transition: all 0.3s; }
+        .phx:hover { background: var(--brand-gold); color: var(--on-gold); }
+        .phn { font-size: 24px; font-weight: 700; color: var(--text-primary); position: relative; z-index: 1; margin-bottom: 4px; }
         .php { font-size: 11px; color: var(--brand-gold); text-transform: uppercase; letter-spacing: 0.1em; position: relative; z-index: 1; }
         .pb { padding: 24px; display: flex; flex-direction: column; flex: 1; }
         .ps { border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 20px; }
@@ -185,38 +185,39 @@ export default function PlotDetails({ plot, onClose }) {
         .sbadge.sold { color: var(--gray); border-color: var(--border); }
         .sbadge.reserved { color: var(--brand-gold); border-color: var(--gold-b); background: var(--gold-p); }
         .sbdot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-        .pbox { background: rgba(255,255,255,0.02); padding: 20px; display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
-        .pmain { font-size: 26px; color: var(--brand-white); font-weight: 700; }
-        .ppsf { font-size: 11px; color: var(--gray); margin-top: 4px; }
+        .pbox { background: var(--bg-secondary); padding: 20px; display: flex; align-items: center; justify-content: space-between; margin-top: 4px; border: 1px solid var(--gold-b); }
+        .pmain { font-size: 26px; color: var(--text-primary); font-weight: 700; }
+        .ppsf { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
         .ppi-l { font-size: 9px; color: var(--brand-gold); letter-spacing: 0.1em; }
-        .ppi-v { font-size: 14px; color: var(--brand-beige); margin-top: 4px; }
-        .bdr { background: rgba(0,0,0,0.3); padding: 16px; }
+        .ppi-v { font-size: 14px; color: var(--text-secondary); margin-top: 4px; }
+        .bdr { background: var(--bg-secondary); padding: 16px; border: 1px solid var(--border); }
         .brow { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
-        .blbl { font-size: 12px; color: var(--gray); }
-        .bval { font-size: 12px; color: var(--brand-beige); font-weight: 500; }
+        .blbl { font-size: 12px; color: var(--text-muted); }
+        .bval { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
         .bdiv { height: 1px; background: var(--border); margin: 12px 0; }
         .tot { color: var(--brand-gold) !important; font-size: 14px !important; }
         .dgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .di-l { font-size: 9px; color: var(--gray); letter-spacing: 0.1em; margin-bottom: 4px; }
-        .di-v { font-size: 14px; font-weight: 600; color: var(--brand-white); }
+        .di-l { font-size: 9px; color: var(--text-muted); letter-spacing: 0.1em; margin-bottom: 4px; }
+        .di-v { font-size: 14px; font-weight: 600; color: var(--text-primary); }
         .gold { color: var(--brand-gold) !important; }
-        .amrow { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; }
+        .amrow { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+        .amrow:last-child { border-bottom: none; }
         .aml { display: flex; align-items: center; gap: 14px; flex: 1; }
         .am-icon { font-size: 20px; width: 24px; }
         .am-info { flex: 1; }
-        .am-name { font-size: 12px; color: var(--brand-white); margin-bottom: 6px; }
-        .ambar { height: 2px; background: rgba(255,255,255,0.05); width: 80%; border-radius: 2px; }
+        .am-name { font-size: 12px; color: var(--text-primary); margin-bottom: 6px; }
+        .ambar { height: 2px; background: var(--border); width: 80%; border-radius: 2px; }
         .amfill { height: 100%; background: var(--brand-gold); border-radius: 2px; }
         .amdist { font-size: 12px; color: var(--brand-gold); }
         .roii { display: flex; gap: 12px; margin-bottom: 16px; }
         .roir { flex: 1; }
-        .roil { font-size: 10px; color: var(--gray); display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
-        .roiinp { background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--brand-white); padding: 8px; font-size: 13px; width: 100%; outline: none; }
+        .roil { font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .roiinp { background: var(--card-bg); border: 1px solid var(--border); color: var(--text-primary); padding: 8px; font-size: 13px; width: 100%; outline: none; transition: border-color 0.3s; }
         .roiinp:focus { border-color: var(--brand-gold); }
         .roigrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .roic { background: rgba(206, 154, 82, 0.05); border: 1px solid var(--gold-b); padding: 14px; text-align: center; }
-        .roicl { font-size: 9px; color: var(--gray); margin-bottom: 6px; }
-        .roicv { font-size: 16px; }
+        .roic { background: var(--gold-p); border: 1px solid var(--gold-b); padding: 14px; text-align: center; }
+        .roicl { font-size: 9px; color: var(--text-muted); margin-bottom: 6px; }
+        .roicv { font-size: 16px; color: var(--text-primary); }
         .actrow { display: flex; gap: 12px; }
       `}</style>
     </div>

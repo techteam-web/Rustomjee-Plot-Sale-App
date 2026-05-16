@@ -1,38 +1,59 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
 
 :root {
-  /* Brand Primary Colors */
-  --brand-black: #000000;
-  --brand-white: #FFFFFF;
-  
-  /* Brand Highlight Colors */
+  /* Brand Primary Colors (Consistent across themes) */
   --brand-gold: #CE9A52;
   --brand-gold-dark: #b38541;
   --brand-beige: #DAD4C6;
-  --brand-beige-light: #f5f3f0;
   
-  /* UI Contextual Colors */
-  --navy-dark: #000000; /* Matching Brand Black */
-  --gold: var(--brand-gold);
-  --gold-l: #e0ae55;
-  --gold-p: rgba(206, 154, 82, 0.12);
-  --gold-b: rgba(206, 154, 82, 0.3);
-  
-  /* Secondary/Extended Palette (from Manual) */
-  --brand-blue: #CAF0FD;
-  --brand-peach: #FFB9A1;
-  --brand-green: #B5D18D;
-  --brand-lavender: #CFB3CE;
-  
-  --white: #fff;
-  --cream: var(--brand-beige);
-  --gray: #8A93A6;
-  --lgray: #C5CADE;
-  --border: rgba(255, 255, 255, 0.1);
-  
-  --status-available: #B5D18D; /* Brand Green */
+  /* Status Colors (Consistent) */
+  --status-available: #B5D18D;
   --status-sold: #8A93A6;
   --status-reserved: var(--brand-gold);
+}
+
+/* Dark Theme (Default) */
+[data-theme='dark'] {
+  --bg-primary: #000000;
+  --bg-secondary: #0a0a0a;
+  --text-primary: #FFFFFF;
+  --text-secondary: #DAD4C6;
+  --text-muted: #8A93A6;
+  --border-color: rgba(255, 255, 255, 0.12);
+  --glass-bg: rgba(0, 0, 0, 0.85);
+  --panel-bg: #000000;
+  --card-bg: rgba(255, 255, 255, 0.04);
+  --gold-p: rgba(206, 154, 82, 0.15);
+  --gold-b: rgba(206, 154, 82, 0.35);
+  --on-gold: #000000;
+}
+
+/* Light Theme */
+[data-theme='light'] {
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #FBF9F5;
+  --text-primary: #000000;
+  --text-secondary: #1B2B4B;
+  --text-muted: #444444; 
+  --border-color: rgba(0, 0, 0, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.95);
+  --panel-bg: #FFFFFF;
+  --card-bg: rgba(0, 0, 0, 0.02);
+  --gold-p: rgba(181, 134, 62, 0.15); /* Darker gold base */
+  --gold-b: rgba(181, 134, 62, 0.4);
+  --on-gold: #000000;
+  --brand-gold: #B3863E; /* Darker gold for Light Mode contrast */
+}
+
+:root {
+  --brand-gold: #CE9A52;
+  /* Alias variables for components */
+  --white: var(--text-primary);
+  --cream: var(--text-secondary);
+  --gray: var(--text-muted);
+  --border: var(--border-color);
+  --gold: var(--brand-gold);
+  --gold-l: #e0ae55;
 }
 
 * {
@@ -42,11 +63,16 @@
 }
 
 body {
-  font-family: 'Inter', sans-serif; /* Clean Sans like Futura */
-  background: var(--brand-black);
-  color: var(--brand-white);
+  font-family: 'Inter', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   overflow: hidden;
   height: 100vh;
+  transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
+}
+
+div, header, sidebar, section, button, span, nav {
+  transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out, color 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
 }
 
 h1, h2, h3, .headline {
@@ -73,11 +99,12 @@ h1, h2, h3, .headline {
 }
 
 .mapboxgl-popup-content {
-  background: rgba(0, 0, 0, 0.95) !important;
+  background: var(--glass-bg) !important;
   border: 1px solid var(--brand-gold) !important;
+  backdrop-filter: blur(10px);
   border-radius: 0 !important;
   padding: 12px !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4) !important;
 }
 
 .mapboxgl-popup-tip {
@@ -114,12 +141,13 @@ h1, h2, h3, .headline {
 
 .btn-brand:hover {
   background: var(--brand-gold);
-  color: var(--brand-black);
+  color: var(--on-gold);
 }
 
 .btn-brand.primary {
   background: var(--brand-gold);
-  color: var(--brand-black);
+  color: var(--on-gold);
+  font-weight: 600;
 }
 
 .btn-brand.primary:hover {

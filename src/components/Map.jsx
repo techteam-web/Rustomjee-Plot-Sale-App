@@ -5,78 +5,97 @@ import { BOUNDARY, ROAD_COORDS, IROAD1, IROAD2, PARK1, PARK2, WATER, CLUBHOUSE }
 
 mapboxgl.accessToken = 'pk.eyJ1IjoibmlsZXNocGF0aGFyZSIsImEiOiJjbTAyOTVjYXMwMDVtMm5zNnpvaHlmaDZjIn0.MBcXShFJ8vc1cl26zkTcfQ';
 
-export default function Map({ plots, activePlot, onPlotClick, viewMode }) {
+export default function Map({ plots, activePlot, onPlotClick, viewMode, theme }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
+  const themeRef = useRef(theme);
 
-  useEffect(() => {
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: 'mapbox://styles/mapbox/dark-v11',
-      center: [73.46265, 19.64076],
-      zoom: 15,
-      pitch: 0,
-      bearing: 0,
-      antialias: true
-    });
+  // Keep themeRef in sync
+  useEffect(() => { themeRef.current = theme; }, [theme]);
 
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'bottom-right');
+  const setupLayers = (map) => {
+    if (!map || !map.getStyle()) return;
+    const currentTheme = themeRef.current;
+    const mkGeo = (coords) => ({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] } });
 
-    map.on('load', () => {
-      const mkGeo = (coords) => ({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] } });
-
-      // Boundary
+    // Boundary
+    if (!map.getSource('boundary')) {
       map.addSource('boundary', { type: 'geojson', data: { type: 'FeatureCollection', features: [mkGeo(BOUNDARY)] } });
+    }
+    if (!map.getLayer('boundary-line')) {
       map.addLayer({ id: 'boundary-line', type: 'line', source: 'boundary', paint: { 'line-color': '#CE9A52', 'line-width': 2, 'line-dasharray': [4, 3], 'line-opacity': .7 } });
+    }
 
-      // Roads
+    // Roads
+    if (!map.getSource('roads')) {
       map.addSource('roads', { type: 'geojson', data: { type: 'FeatureCollection', features: [mkGeo(ROAD_COORDS), mkGeo(IROAD1), mkGeo(IROAD2)] } });
-      map.addLayer({ id: 'roads-fill', type: 'fill', source: 'roads', paint: { 'fill-color': '#1a1a1a', 'fill-opacity': 0.9 } });
+    }
+    if (!map.getLayer('roads-fill')) {
+      map.addLayer({ id: 'roads-fill', type: 'fill', source: 'roads', paint: { 'fill-color': currentTheme === 'dark' ? '#1a1a1a' : '#f0f0f0', 'fill-opacity': 0.8 } });
+    }
 
-      // Parks
+    // Parks
+    if (!map.getSource('parks')) {
       map.addSource('parks', { type: 'geojson', data: { type: 'FeatureCollection', features: [mkGeo(PARK1), mkGeo(PARK2)] } });
-      map.addLayer({ id: 'parks-fill', type: 'fill', source: 'parks', paint: { 'fill-color': '#B5D18D', 'fill-opacity': 0.3 } });
+    }
+    if (!map.getLayer('parks-fill')) {
+      map.addLayer({ id: 'parks-fill', type: 'fill', source: 'parks', paint: { 'fill-color': '#B5D18D', 'fill-opacity': 0.35 } });
+    }
 
-      // Water
+    // Water
+    if (!map.getSource('water')) {
       map.addSource('water', { type: 'geojson', data: { type: 'FeatureCollection', features: [mkGeo(WATER)] } });
-      map.addLayer({ id: 'water-fill', type: 'fill', source: 'water', paint: { 'fill-color': '#CAF0FD', 'fill-opacity': 0.25 } });
+    }
+    if (!map.getLayer('water-fill')) {
+      map.addLayer({ id: 'water-fill', type: 'fill', source: 'water', paint: { 'fill-color': '#CAF0FD', 'fill-opacity': 0.35 } });
+    }
 
-      // Clubhouse
+    // Clubhouse
+    if (!map.getSource('club')) {
       map.addSource('club', { type: 'geojson', data: { type: 'FeatureCollection', features: [mkGeo(CLUBHOUSE)] } });
-      map.addLayer({ id: 'club-fill', type: 'fill', source: 'club', paint: { 'fill-color': '#FFB9A1', 'fill-opacity': 0.3 } });
+    }
+    if (!map.getLayer('club-fill')) {
+      map.addLayer({ id: 'club-fill', type: 'fill', source: 'club', paint: { 'fill-color': '#FFB9A1', 'fill-opacity': 0.35 } });
+    }
 
-      // Plots
-      const plotFeatures = plots.map(p => ({
-        type: 'Feature',
-        properties: {
-          id: p.name,
-          status: p.status,
-          height: p.area_sqft / 2000 * 2,
-          name: p.name,
-          price: formatCurrency(p.pr.total),
-          area: p.area_sqft.toLocaleString(),
-        },
-        geometry: { type: 'Polygon', coordinates: [p.coords] }
-      }));
+    // Plots
+    const plotFeatures = plots.map(p => ({
+      type: 'Feature',
+      properties: {
+        id: p.name,
+        status: p.status,
+        height: p.area_sqft / 2000 * 2,
+        name: p.name,
+        price: formatCurrency(p.pr.total),
+        area: p.area_sqft.toLocaleString(),
+      },
+      geometry: { type: 'Polygon', coordinates: [p.coords] }
+    }));
+    
+    if (!map.getSource('plots')) {
       map.addSource('plots', { type: 'geojson', data: { type: 'FeatureCollection', features: plotFeatures } });
+    }
 
-      // 2D Layers
+    // 2D Layers
+    if (!map.getLayer('plots-fill')) {
       map.addLayer({
         id: 'plots-fill', type: 'fill', source: 'plots',
         paint: {
           'fill-color': ['case',
-            ['==', ['get', 'status'], 'sold'], '#333333',
-            ['==', ['get', 'status'], 'reserved'], 'rgba(206, 154, 82, 0.3)',
-            'rgba(218, 212, 198, 0.2)'
+            ['==', ['get', 'status'], 'sold'], currentTheme === 'dark' ? '#333333' : '#f5f5f5',
+            ['==', ['get', 'status'], 'reserved'], 'rgba(206, 154, 82, 0.4)',
+            currentTheme === 'dark' ? 'rgba(218, 212, 198, 0.15)' : 'rgba(218, 212, 198, 0.3)'
           ],
           'fill-opacity': 1
         }
       });
+    }
+    if (!map.getLayer('plots-outline')) {
       map.addLayer({
         id: 'plots-outline', type: 'line', source: 'plots',
         paint: {
           'line-color': ['case',
-            ['==', ['get', 'status'], 'sold'], '#444444',
+            ['==', ['get', 'status'], 'sold'], currentTheme === 'dark' ? '#444444' : '#e0e0e0',
             ['==', ['get', 'status'], 'reserved'], '#CE9A52',
             '#CE9A52'
           ],
@@ -84,61 +103,110 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode }) {
           'line-opacity': 0.5
         }
       });
+    }
 
-      // 3D Layer
+    // 3D Layer
+    if (!map.getLayer('plots-3d')) {
       map.addLayer({
         id: 'plots-3d', type: 'fill-extrusion', source: 'plots',
-        layout: { visibility: 'none' },
+        layout: { visibility: viewMode === '3D' ? 'visible' : 'none' },
         paint: {
           'fill-extrusion-color': ['case',
-            ['==', ['get', 'status'], 'sold'], '#222222',
+            ['==', ['get', 'status'], 'sold'], currentTheme === 'dark' ? '#222222' : '#f0f0f0',
             ['==', ['get', 'status'], 'reserved'], '#b38541',
             '#CE9A52'
           ],
           'fill-extrusion-height': ['get', 'height'],
           'fill-extrusion-base': 0,
-          'fill-extrusion-opacity': 0.9
+          'fill-extrusion-opacity': 0.8
         }
       });
+    }
+  };
 
-      // Click and Hover handlers
-      map.on('click', 'plots-fill', (e) => onPlotClick(plots.find(p => p.name === e.features[0].properties.id)));
-      map.on('click', 'plots-3d', (e) => onPlotClick(plots.find(p => p.name === e.features[0].properties.id)));
+  useEffect(() => {
+    const map = new mapboxgl.Map({
+      container: mapContainerRef.current,
+      style: theme === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11',
+      center: [73.46265, 19.64076],
+      zoom: 15,
+      pitch: viewMode === '3D' ? 60 : 0,
+      bearing: viewMode === '3D' ? -25 : 0,
+      antialias: true
+    });
+
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'bottom-right');
+
+    map.on('load', () => {
+      setupLayers(map);
       
-      map.on('mouseenter', 'plots-fill', () => map.getCanvas().style.cursor = 'pointer');
-      map.on('mouseleave', 'plots-fill', () => map.getCanvas().style.cursor = '');
+      const handlePlotClick = (e) => {
+        const id = e.features[0].properties.id;
+        const p = plots.find(x => x.name === id);
+        if (p) onPlotClick(p);
+      };
+
+      map.on('click', 'plots-fill', handlePlotClick);
+      map.on('click', 'plots-3d', handlePlotClick);
+      
+      const updateCursor = (cursor) => map.getCanvas().style.cursor = cursor;
+      map.on('mouseenter', 'plots-fill', () => updateCursor('pointer'));
+      map.on('mouseleave', 'plots-fill', () => updateCursor(''));
+      map.on('mouseenter', 'plots-3d', () => updateCursor('pointer'));
+      map.on('mouseleave', 'plots-3d', () => updateCursor(''));
       
       const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 10, className: 'mbpop' });
-      map.on('mousemove', 'plots-fill', (e) => {
+      
+      const handleMouseMove = (e) => {
         const p = plots.find(x => x.name === e.features[0].properties.id);
         if (!p) return;
-        const stColor = p.status === 'available' ? '#B5D18D' : p.status === 'reserved' ? '#CE9A52' : '#8A93A6';
+        const currentTheme = themeRef.current;
+        const stColor = p.status === 'available' ? '#2E7D32' : p.status === 'reserved' ? '#CE9A52' : '#555555';
+        const txtPrimary = currentTheme === 'dark' ? '#FFFFFF' : '#000000';
+        const txtSecondary = currentTheme === 'dark' ? '#DAD4C6' : '#444444';
+        
         popup.setLngLat(e.lngLat).setHTML(`
-          <div style="font-family:'Inter',sans-serif;padding:4px 2px;min-width:160px;">
-            <div style="font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:#CE9A52">${p.name}</div>
-            <div style="font-size:11px;color:#DAD4C6;margin-top:6px;letter-spacing:0.05em">${p.area_sqft.toLocaleString()} SQFT · ${p.cat}</div>
-            <div style="font-size:13px;color:#FFFFFF;font-weight:600;margin-top:4px">${formatCurrency(p.pr.total)}</div>
-            <div style="font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:${stColor};margin-top:8px;font-weight:700;border-top:1px solid rgba(255,255,255,0.1);padding-top:6px">${p.status}</div>
+          <div style="font-family:'Inter',sans-serif;padding:6px 2px;min-width:180px;line-height:1.4;">
+            <div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#CE9A52;margin-bottom:2px">${p.name}</div>
+            <div style="font-size:11px;color:${txtSecondary};letter-spacing:0.05em;margin-bottom:6px">${p.area_sqft.toLocaleString()} SQFT · ${p.cat}</div>
+            <div style="font-size:14px;color:${txtPrimary};font-weight:800;margin-bottom:10px">${formatCurrency(p.pr.total)}</div>
+            <div style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:${stColor};font-weight:800;border-top:1px solid ${currentTheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'};padding-top:8px">${p.status}</div>
           </div>`).addTo(map);
-      });
-      map.on('mouseleave', 'plots-fill', () => popup.remove());
+      };
+
+      const handleMouseLeave = () => popup.remove();
+
+      map.on('mousemove', 'plots-fill', handleMouseMove);
+      map.on('mouseleave', 'plots-fill', handleMouseLeave);
+      map.on('mousemove', 'plots-3d', handleMouseMove);
+      map.on('mouseleave', 'plots-3d', handleMouseLeave);
 
       mapRef.current = map;
     });
 
+    map.on('style.load', () => {
+      if (mapRef.current) setupLayers(mapRef.current);
+    });
+
     return () => map.remove();
-  }, []);
+  }, []);;
+
+  // Handle Theme Change
+  useEffect(() => {
+    if (!mapRef.current) return;
+    mapRef.current.setStyle(theme === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11');
+  }, [theme]);
 
   // Update highlights
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || !mapRef.current.isStyleLoaded()) return;
     const map = mapRef.current;
     
     map.setPaintProperty('plots-fill', 'fill-color', ['case',
       ['==', ['get', 'id'], activePlot || ''], 'rgba(206, 154, 82, 0.8)',
-      ['==', ['get', 'status'], 'sold'], '#333333',
+      ['==', ['get', 'status'], 'sold'], theme === 'dark' ? '#333333' : '#cccccc',
       ['==', ['get', 'status'], 'reserved'], 'rgba(206, 154, 82, 0.3)',
-      'rgba(218, 212, 198, 0.2)'
+      theme === 'dark' ? 'rgba(218, 212, 198, 0.2)' : 'rgba(27, 43, 75, 0.1)'
     ]);
     map.setPaintProperty('plots-outline', 'line-width', ['case', ['==', ['get', 'id'], activePlot || ''], 2, 1]);
     map.setPaintProperty('plots-outline', 'line-opacity', ['case', ['==', ['get', 'id'], activePlot || ''], 1, 0.5]);
@@ -147,11 +215,11 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode }) {
       const p = plots.find(x => x.name === activePlot);
       if (p) map.flyTo({ center: p.center, zoom: 17, duration: 1200, pitch: 45 });
     }
-  }, [activePlot]);
+  }, [activePlot, theme]);
 
   // Handle View Mode
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || !mapRef.current.isStyleLoaded()) return;
     const map = mapRef.current;
     if (viewMode === '3D') {
       map.setLayoutProperty('plots-fill', 'visibility', 'none');
@@ -172,10 +240,10 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode }) {
       <div id="map" ref={mapContainerRef}></div>
       {viewMode === '3D' && <div id="hint3d" className="headline">🖱 Drag to rotate · Scroll to zoom</div>}
       <style>{`
-        #mwrap { flex: 1; position: relative; background: #000; }
-        #map { width: 100%; height: 100%; }
-        #mlabel { position: absolute; top: 24px; left: 24px; z-index: 10; background: rgba(0,0,0,0.9); border: 1px solid var(--brand-gold); padding: 8px 16px; font-size: 10px; letter-spacing: 0.2em; color: var(--brand-gold); }
-        #hint3d { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 10; background: rgba(0,0,0,0.9); border: 1px solid var(--brand-gold); padding: 8px 20px; font-size: 9px; letter-spacing: 0.1em; color: var(--brand-white); pointer-events: none; }
+        #mwrap { flex: 1; position: relative; background: var(--bg-secondary); transition: background-color 0.3s ease-in-out; }
+        #map { width: 100%; height: 100%; transition: opacity 0.3s ease-in-out, filter 0.3s ease-in-out; }
+        #mlabel { position: absolute; top: 24px; left: 24px; z-index: 10; background: var(--glass-bg); backdrop-filter: blur(8px); border: 1px solid var(--brand-gold); padding: 8px 16px; font-size: 10px; letter-spacing: 0.2em; color: var(--brand-gold); transition: all 0.3s ease-in-out; }
+        #hint3d { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 10; background: var(--glass-bg); backdrop-filter: blur(8px); border: 1px solid var(--brand-gold); padding: 8px 20px; font-size: 9px; letter-spacing: 0.1em; color: var(--text-primary); pointer-events: none; transition: all 0.3s ease-in-out; }
       `}</style>
     </div>
   );
