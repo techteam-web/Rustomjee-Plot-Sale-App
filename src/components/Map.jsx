@@ -5,25 +5,33 @@ import { BOUNDARY, ROAD_COORDS, IROAD1, IROAD2, PARK1, PARK2, WATER, CLUBHOUSE }
 
 mapboxgl.accessToken = 'pk.eyJ1IjoibmlsZXNocGF0aGFyZSIsImEiOiJjbTAyOTVjYXMwMDVtMm5zNnpvaHlmaDZjIn0.MBcXShFJ8vc1cl26zkTcfQ';
 
-export default function Map({ plots, activePlot, onPlotClick, viewMode, theme }) {
+export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType, theme }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const themeRef = useRef(theme);
+  const mapTypeRef = useRef(mapType);
 
-  // Keep themeRef in sync
+  // Keep refs in sync
   useEffect(() => { themeRef.current = theme; }, [theme]);
+  useEffect(() => { mapTypeRef.current = mapType; }, [mapType]);
 
   const setupLayers = (map) => {
     if (!map || !map.getStyle()) return;
     const currentTheme = themeRef.current;
+    const currentMapType = mapTypeRef.current;
     const mkGeo = (coords) => ({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] } });
 
+    // Colors
+    const isSat = currentMapType === 'satellite';
+    const gold = '#CE9A52';
+    const white = '#FFFFFF';
+    
     // Boundary
     if (!map.getSource('boundary')) {
       map.addSource('boundary', { type: 'geojson', data: { type: 'FeatureCollection', features: [mkGeo(BOUNDARY)] } });
     }
     if (!map.getLayer('boundary-line')) {
-      map.addLayer({ id: 'boundary-line', type: 'line', source: 'boundary', paint: { 'line-color': '#CE9A52', 'line-width': 2, 'line-dasharray': [4, 3], 'line-opacity': .7 } });
+      map.addLayer({ id: 'boundary-line', type: 'line', source: 'boundary', paint: { 'line-color': isSat ? white : gold, 'line-width': isSat ? 1 : 2, 'line-dasharray': [4, 3], 'line-opacity': isSat ? 0.5 : 0.7 } });
     }
 
     // Roads
@@ -31,31 +39,31 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, theme })
       map.addSource('roads', { type: 'geojson', data: { type: 'FeatureCollection', features: [mkGeo(ROAD_COORDS), mkGeo(IROAD1), mkGeo(IROAD2)] } });
     }
     if (!map.getLayer('roads-fill')) {
-      map.addLayer({ id: 'roads-fill', type: 'fill', source: 'roads', paint: { 'fill-color': currentTheme === 'dark' ? '#1a1a1a' : '#f0f0f0', 'fill-opacity': 0.8 } });
+      map.addLayer({ id: 'roads-fill', type: 'fill', source: 'roads', paint: { 'fill-color': isSat ? white : (currentTheme === 'dark' ? '#1a1a1a' : '#f0f0f0'), 'fill-opacity': isSat ? 0.1 : 0.8 } });
     }
 
-    // Parks
-    if (!map.getSource('parks')) {
-      map.addSource('parks', { type: 'geojson', data: { type: 'FeatureCollection', features: [mkGeo(PARK1), mkGeo(PARK2)] } });
-    }
-    if (!map.getLayer('parks-fill')) {
-      map.addLayer({ id: 'parks-fill', type: 'fill', source: 'parks', paint: { 'fill-color': '#B5D18D', 'fill-opacity': 0.35 } });
-    }
+    // Landuse layers - Only in Raster
+    if (!isSat) {
+      if (!map.getSource('parks')) {
+        map.addSource('parks', { type: 'geojson', data: { type: 'FeatureCollection', features: [mkGeo(PARK1), mkGeo(PARK2)] } });
+      }
+      if (!map.getLayer('parks-fill')) {
+        map.addLayer({ id: 'parks-fill', type: 'fill', source: 'parks', paint: { 'fill-color': '#B5D18D', 'fill-opacity': 0.35 } });
+      }
 
-    // Water
-    if (!map.getSource('water')) {
-      map.addSource('water', { type: 'geojson', data: { type: 'FeatureCollection', features: [mkGeo(WATER)] } });
-    }
-    if (!map.getLayer('water-fill')) {
-      map.addLayer({ id: 'water-fill', type: 'fill', source: 'water', paint: { 'fill-color': '#CAF0FD', 'fill-opacity': 0.35 } });
-    }
+      if (!map.getSource('water')) {
+        map.addSource('water', { type: 'geojson', data: { type: 'FeatureCollection', features: [mkGeo(WATER)] } });
+      }
+      if (!map.getLayer('water-fill')) {
+        map.addLayer({ id: 'water-fill', type: 'fill', source: 'water', paint: { 'fill-color': '#CAF0FD', 'fill-opacity': 0.35 } });
+      }
 
-    // Clubhouse
-    if (!map.getSource('club')) {
-      map.addSource('club', { type: 'geojson', data: { type: 'FeatureCollection', features: [mkGeo(CLUBHOUSE)] } });
-    }
-    if (!map.getLayer('club-fill')) {
-      map.addLayer({ id: 'club-fill', type: 'fill', source: 'club', paint: { 'fill-color': '#FFB9A1', 'fill-opacity': 0.35 } });
+      if (!map.getSource('club')) {
+        map.addSource('club', { type: 'geojson', data: { type: 'FeatureCollection', features: [mkGeo(CLUBHOUSE)] } });
+      }
+      if (!map.getLayer('club-fill')) {
+        map.addLayer({ id: 'club-fill', type: 'fill', source: 'club', paint: { 'fill-color': '#FFB9A1', 'fill-opacity': 0.35 } });
+      }
     }
 
     // Plots
@@ -82,9 +90,9 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, theme })
         id: 'plots-fill', type: 'fill', source: 'plots',
         paint: {
           'fill-color': ['case',
-            ['==', ['get', 'status'], 'sold'], currentTheme === 'dark' ? '#333333' : '#f5f5f5',
-            ['==', ['get', 'status'], 'reserved'], 'rgba(206, 154, 82, 0.4)',
-            currentTheme === 'dark' ? 'rgba(218, 212, 198, 0.15)' : 'rgba(218, 212, 198, 0.3)'
+            ['==', ['get', 'status'], 'sold'], isSat ? '#555555' : (currentTheme === 'dark' ? '#333333' : '#cccccc'),
+            ['==', ['get', 'status'], 'reserved'], gold,
+            isSat ? white : (currentTheme === 'dark' ? '#4C586B' : '#DAD4C6')
           ],
           'fill-opacity': 1
         }
@@ -95,12 +103,12 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, theme })
         id: 'plots-outline', type: 'line', source: 'plots',
         paint: {
           'line-color': ['case',
-            ['==', ['get', 'status'], 'sold'], currentTheme === 'dark' ? '#444444' : '#e0e0e0',
-            ['==', ['get', 'status'], 'reserved'], '#CE9A52',
-            '#CE9A52'
+            ['==', ['get', 'status'], 'sold'], '#222222',
+            ['==', ['get', 'status'], 'reserved'], '#b38541',
+            isSat ? '#cccccc' : '#b38541'
           ],
           'line-width': 1,
-          'line-opacity': 0.5
+          'line-opacity': 1
         }
       });
     }
@@ -112,22 +120,29 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, theme })
         layout: { visibility: viewMode === '3D' ? 'visible' : 'none' },
         paint: {
           'fill-extrusion-color': ['case',
-            ['==', ['get', 'status'], 'sold'], currentTheme === 'dark' ? '#222222' : '#f0f0f0',
-            ['==', ['get', 'status'], 'reserved'], '#b38541',
-            '#CE9A52'
+            ['==', ['get', 'status'], 'sold'], isSat ? '#444444' : (currentTheme === 'dark' ? '#222222' : '#f0f0f0'),
+            ['==', ['get', 'status'], 'reserved'], gold,
+            isSat ? white : gold
           ],
           'fill-extrusion-height': ['get', 'height'],
           'fill-extrusion-base': 0,
-          'fill-extrusion-opacity': 0.8
+          'fill-extrusion-opacity': 1
         }
       });
     }
   };
 
   useEffect(() => {
+    const getStyle = () => {
+      if (mapType === 'satellite') {
+        return theme === 'dark' ? 'mapbox://styles/mapbox/satellite-v9' : 'mapbox://styles/mapbox/satellite-streets-v12';
+      }
+      return theme === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11';
+    };
+
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
-      style: theme === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11',
+      style: getStyle(),
       center: [73.46265, 19.64076],
       zoom: 15,
       pitch: viewMode === '3D' ? 60 : 0,
@@ -189,33 +204,43 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, theme })
     });
 
     return () => map.remove();
-  }, []);;
+  }, []);
 
-  // Handle Theme Change
+  // Handle Theme/MapType Change
   useEffect(() => {
     if (!mapRef.current) return;
-    mapRef.current.setStyle(theme === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11');
-  }, [theme]);
+    const getStyle = () => {
+      if (mapType === 'satellite') {
+        return theme === 'dark' ? 'mapbox://styles/mapbox/satellite-v9' : 'mapbox://styles/mapbox/satellite-streets-v12';
+      }
+      return theme === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11';
+    };
+    mapRef.current.setStyle(getStyle());
+  }, [theme, mapType]);
 
   // Update highlights
   useEffect(() => {
     if (!mapRef.current || !mapRef.current.isStyleLoaded()) return;
     const map = mapRef.current;
+    const isSat = mapType === 'satellite';
+    const gold = '#CE9A52';
+    const white = '#FFFFFF';
     
     map.setPaintProperty('plots-fill', 'fill-color', ['case',
-      ['==', ['get', 'id'], activePlot || ''], 'rgba(206, 154, 82, 0.8)',
-      ['==', ['get', 'status'], 'sold'], theme === 'dark' ? '#333333' : '#cccccc',
-      ['==', ['get', 'status'], 'reserved'], 'rgba(206, 154, 82, 0.3)',
-      theme === 'dark' ? 'rgba(218, 212, 198, 0.2)' : 'rgba(27, 43, 75, 0.1)'
+      ['==', ['get', 'id'], activePlot || ''], gold,
+      ['==', ['get', 'status'], 'sold'], isSat ? '#555555' : (theme === 'dark' ? '#333333' : '#cccccc'),
+      ['==', ['get', 'status'], 'reserved'], gold,
+      isSat ? white : (theme === 'dark' ? '#4C586B' : '#DAD4C6')
     ]);
     map.setPaintProperty('plots-outline', 'line-width', ['case', ['==', ['get', 'id'], activePlot || ''], 2, 1]);
-    map.setPaintProperty('plots-outline', 'line-opacity', ['case', ['==', ['get', 'id'], activePlot || ''], 1, 0.5]);
+    map.setPaintProperty('plots-outline', 'line-opacity', 1);
+    map.setPaintProperty('plots-outline', 'line-color', ['case', ['==', ['get', 'id'], activePlot || ''], white, isSat ? '#cccccc' : '#b38541']);
     
     if (activePlot) {
       const p = plots.find(x => x.name === activePlot);
       if (p) map.flyTo({ center: p.center, zoom: 17, duration: 1200, pitch: 45 });
     }
-  }, [activePlot, theme]);
+  }, [activePlot, theme, mapType]);
 
   // Handle View Mode
   useEffect(() => {

@@ -29,6 +29,7 @@ function App() {
   const [viewMode, setViewMode] = useState('2D');
   const [showMasterplan, setShowMasterplan] = useState(false);
   const [theme, setTheme] = useState('dark');
+  const [mapType, setMapType] = useState('standard');
 
   React.useEffect(() => {
     document.body.setAttribute('data-theme', theme);
@@ -79,6 +80,8 @@ function App() {
           onPlotClick={(p) => setActivePlot(p.name)}
           viewMode={viewMode}
           setViewMode={setViewMode}
+          mapType={mapType}
+          setMapType={setMapType}
           theme={theme}
         />
         
@@ -88,6 +91,7 @@ function App() {
           activePlot={activePlot}
           onPlotClick={(p) => setActivePlot(p.name)}
           viewMode={viewMode}
+          mapType={mapType}
           theme={theme}
         />
         

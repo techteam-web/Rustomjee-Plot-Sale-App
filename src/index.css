@@ -14,35 +14,37 @@
 
 /* Dark Theme (Default) */
 [data-theme='dark'] {
-  --bg-primary: #000000;
-  --bg-secondary: #0a0a0a;
+  --bg-primary: #2D343E; /* Deep Slate */
+  --bg-secondary: #242A32;
   --text-primary: #FFFFFF;
-  --text-secondary: #DAD4C6;
+  --text-secondary: #B4BCC9; /* Muted Slate */
   --text-muted: #8A93A6;
-  --border-color: rgba(255, 255, 255, 0.12);
-  --glass-bg: rgba(0, 0, 0, 0.85);
-  --panel-bg: #000000;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --glass-bg: rgba(45, 52, 62, 0.9);
+  --panel-bg: #2D343E;
   --card-bg: rgba(255, 255, 255, 0.04);
-  --gold-p: rgba(206, 154, 82, 0.15);
-  --gold-b: rgba(206, 154, 82, 0.35);
-  --on-gold: #000000;
+  --gold-p: rgba(206, 154, 82, 0.12);
+  --gold-b: rgba(206, 154, 82, 0.3);
+  --on-gold: #FFFFFF;
+  --brand-black: #242A32;
 }
 
 /* Light Theme */
 [data-theme='light'] {
-  --bg-primary: #FFFFFF;
-  --bg-secondary: #FBF9F5;
-  --text-primary: #000000;
-  --text-secondary: #1B2B4B;
-  --text-muted: #444444; 
-  --border-color: rgba(0, 0, 0, 0.1);
-  --glass-bg: rgba(255, 255, 255, 0.95);
+  --bg-primary: #F5F7F9; /* Soft Off-White */
+  --bg-secondary: #EBEDF0;
+  --text-primary: #2D343E; /* Deep Slate Text */
+  --text-secondary: #4C586B; /* Primary Slate */
+  --text-muted: #6B778C; 
+  --border-color: rgba(76, 88, 107, 0.12);
+  --glass-bg: rgba(245, 247, 249, 0.95);
   --panel-bg: #FFFFFF;
-  --card-bg: rgba(0, 0, 0, 0.02);
-  --gold-p: rgba(181, 134, 62, 0.15); /* Darker gold base */
-  --gold-b: rgba(181, 134, 62, 0.4);
-  --on-gold: #000000;
-  --brand-gold: #B3863E; /* Darker gold for Light Mode contrast */
+  --card-bg: rgba(76, 88, 107, 0.03);
+  --gold-p: rgba(181, 134, 62, 0.1);
+  --gold-b: rgba(181, 134, 62, 0.25);
+  --on-gold: #FFFFFF;
+  --brand-gold: #B3863E;
+  --brand-black: #EBEDF0;
 }
 
 :root {
@@ -132,24 +134,42 @@ h1, h2, h3, .headline {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   padding: 10px 24px;
-  border: 1px solid var(--brand-gold);
+  border: 1px solid var(--text-secondary);
   background: transparent;
-  color: var(--brand-gold);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .btn-brand:hover {
-  background: var(--brand-gold);
-  color: var(--on-gold);
+  background: var(--text-secondary);
+  color: var(--bg-primary);
 }
 
 .btn-brand.primary {
-  background: var(--brand-gold);
-  color: var(--on-gold);
+  background: var(--text-secondary);
+  color: var(--bg-primary);
+  border-color: var(--text-secondary);
   font-weight: 600;
 }
 
 .btn-brand.primary:hover {
-  background: var(--brand-gold-dark);
+  background: var(--text-primary);
 }
+
+/* Specific Gold Accents for Luxury Highlights */
+.gold-accent {
+  color: var(--brand-gold) !important;
+  border-color: var(--brand-gold) !important;
+}
+
+.btn-brand.gold {
+  border-color: var(--brand-gold);
+  color: var(--brand-gold);
+}
+
+.btn-brand.gold:hover {
+  background: var(--brand-gold);
+  color: var(--on-gold);
+}
+

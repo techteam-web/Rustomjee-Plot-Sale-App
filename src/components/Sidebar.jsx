@@ -13,7 +13,9 @@ export default function Sidebar({
   activePlot, 
   onPlotClick,
   viewMode,
-  setViewMode
+  setViewMode,
+  mapType,
+  setMapType
 }) {
   const availableCount = plots.filter(p => p.status === 'available').length;
   const reservedCount = plots.filter(p => p.status === 'reserved').length;
@@ -24,9 +26,13 @@ export default function Sidebar({
     <div id="sb">
       <div className="sbs">
         <div className="sbt headline">Map View</div>
-        <div className="vtrow">
+        <div className="vtrow" style={{ marginBottom: '12px' }}>
           <div className={`vt ${viewMode === '2D' ? 'on' : ''}`} onClick={() => setViewMode('2D')}>2D Map</div>
           <div className={`vt ${viewMode === '3D' ? 'on' : ''}`} onClick={() => setViewMode('3D')}>3D View</div>
+        </div>
+        <div className="vtrow">
+          <div className={`vt ${mapType === 'standard' ? 'on' : ''}`} onClick={() => setMapType('standard')}>Raster</div>
+          <div className={`vt ${mapType === 'satellite' ? 'on' : ''}`} onClick={() => setMapType('satellite')}>Satellite</div>
         </div>
       </div>
 
@@ -141,7 +147,7 @@ export default function Sidebar({
         .vtrow { display: flex; gap: 1px; background: var(--gold-b); border: 1px solid var(--gold-b); }
         .vt { flex: 1; padding: 10px; text-align: center; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
               cursor: pointer; background: var(--brand-black); color: var(--gray); transition: all 0.3s; font-weight: 500; }
-        .vt.on { background: var(--brand-gold); color: var(--brand-black); }
+        .vt.on { background: var(--text-secondary); color: var(--bg-primary); }
         .leg { display: flex; flex-direction: column; gap: 10px; }
         .legr { display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 4px 0; opacity: 0.7; transition: all 0.3s; }
         .legr:hover, .legr.active { opacity: 1; }
@@ -157,13 +163,13 @@ export default function Sidebar({
         .chips { display: flex; gap: 6px; margin-top: 12px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
         .chips::-webkit-scrollbar { display: none; }
         .chip { padding: 6px 10px; border: 1px solid var(--border); font-size: 9px; color: var(--text-muted); cursor: pointer; transition: all 0.3s; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; flex-shrink: 0; }
-        .chip.on { border-color: var(--brand-gold); color: var(--brand-gold); background: var(--gold-p); }
-        .chip:hover { border-color: var(--brand-gold); }
+        .chip.on { border-color: var(--text-secondary); color: var(--bg-primary); background: var(--text-secondary); }
+        .chip:hover { border-color: var(--text-secondary); }
         #plist { flex: 1; overflow-y: auto; background: var(--bg-secondary); }
         .pli { padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;
                cursor: pointer; border-bottom: 1px solid var(--border); transition: all 0.3s; }
-        .pli:hover { background: var(--gold-p); }
-        .pli.on { background: var(--gold-p); border-left: 4px solid var(--brand-gold); }
+        .pli:hover { background: var(--card-bg); }
+        .pli.on { background: var(--card-bg); border-left: 4px solid var(--text-secondary); }
         .pln { font-size: 14px; font-weight: 600; color: var(--text-primary); }
         .plm { font-size: 11px; color: var(--gray); margin-top: 4px; }
         .plp { font-size: 14px; color: var(--brand-gold); font-weight: 600; text-align: right; }
