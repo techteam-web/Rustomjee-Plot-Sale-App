@@ -117,7 +117,14 @@ export default function PlotDetails({ plot, onClose }) {
           display: flex; flex-direction: column; z-index: 200;
         }
         #panel.open { width: 400px; min-width: 400px; }
-        .pi { width: 400px; overflow-y: auto; height: 100%; display: flex; flex-direction: column; background: var(--bg-primary); }
+        @media (max-width: 1024px) {
+          #panel {
+            position: fixed; top: 64px; right: 0; bottom: 0; height: calc(100vh - 64px);
+            border-left: none; box-shadow: -5px 0 20px rgba(0,0,0,0.5);
+          }
+          #panel.open { width: 100%; min-width: 100%; }
+        }
+        .pi { width: 100%; max-width: 400px; margin: 0 auto; overflow-y: auto; height: 100%; display: flex; flex-direction: column; background: var(--bg-primary); }
         .phero { min-height: 200px; position: relative; overflow: hidden; background: var(--bg-secondary); border-bottom: 1px solid var(--gold-b); display: flex; align-items: flex-end; padding: 24px; padding-top: 40px; }
         .phnum { position: absolute; top: 10px; right: 10px; font-size: 80px; color: var(--gold-p); font-weight: 900; line-height: 1; pointer-events: none; opacity: 0.8; }
         .phx { position: absolute; top: 20px; right: 20px; width: 32px; height: 32px; background: var(--card-bg); border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--brand-gold); z-index: 2; transition: all 0.3s; }

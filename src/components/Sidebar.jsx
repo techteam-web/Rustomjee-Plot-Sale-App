@@ -150,6 +150,12 @@ export default function Sidebar({
           width: 320px; min-width: 320px; background: var(--brand-black);
           border-right: 1px solid var(--gold-b); display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden;
         }
+        @media (max-width: 1024px) {
+          #sb {
+            width: 100%; min-width: 100%; border-right: none; border-top: 1px solid var(--gold-b);
+            height: 40vh; /* take bottom 40% of screen */
+          }
+        }
         .sbs { padding: 20px 24px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
         .sbt { font-size: 11px; letter-spacing: 0.2em; color: var(--brand-gold); margin-bottom: 16px; font-weight: 600; }
         .sgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

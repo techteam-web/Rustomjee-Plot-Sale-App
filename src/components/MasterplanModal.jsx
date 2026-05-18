@@ -140,6 +140,13 @@ export default function MasterplanModal({ show, onClose, theme }) {
         .mpctit { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary); letter-spacing: 0.1em; }
         .mpcdesc { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
         #mpmap { width: 100%; height: 350px; border: 1px solid var(--border); filter: ${theme === 'dark' ? 'grayscale(0.2) contrast(1.1)' : 'none'}; }
+        @media (max-width: 768px) {
+          #mpmod { padding: 16px; }
+          .mpinner { padding: 24px; }
+          .mpgrid { grid-template-columns: 1fr; gap: 16px; }
+          .mptitle { font-size: 24px; }
+          .mpclose { top: 16px; right: 16px; width: 32px; height: 32px; }
+        }
       `}</style>
     </div>
   );

@@ -109,7 +109,10 @@ function App() {
       />
 
       <style>{`
-        #app { display: flex; height: 100vh; padding-top: 64px; }
+        #app { display: flex; height: 100vh; padding-top: 64px; flex-direction: row; }
+        @media (max-width: 1024px) {
+          #app { flex-direction: column-reverse; }
+        }
       `}</style>
     </div>
   );

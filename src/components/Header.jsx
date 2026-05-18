@@ -41,6 +41,14 @@ export default function Header({ theme, onToggleTheme, onShowMasterplan, onOpenR
           cursor: pointer; display: flex; align-items: center; justify-content: center;
           padding: 8px; border-radius: 50%; transition: background 0.3s;
         }
+        @media (max-width: 1024px) {
+          #hdr { padding: 0 16px; }
+          .hdr-mid { display: none; }
+          .logo { flex-direction: column; gap: 0; }
+          .brand-tagline { font-size: 8px; }
+          .brand-name { font-size: 16px; }
+          .hbtn-brand { padding: 6px 12px; font-size: 9px; }
+        }
         .theme-toggle:hover { background: var(--gold-p); }
         .hbtn-brand {
           padding: 8px 20px; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase;
