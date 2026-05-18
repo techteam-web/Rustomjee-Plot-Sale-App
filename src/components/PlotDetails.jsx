@@ -1,8 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { formatCurrency, hdist } from '../utils';
 import { CITIES, AMEN } from '../data/plots';
+import gsap from 'gsap';
 
 export default function PlotDetails({ plot, onClose }) {
+  const panelRef = useRef(null);
+
+  useEffect(() => {
+    if (plot && panelRef.current) {
+      // Trigger GSAP animation when a new plot is selected
+      gsap.fromTo(
+        panelRef.current.querySelectorAll('.gsap-stagger'),
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.6, stagger: 0.1, ease: "power3.out", clearProps: "all" }
+      );
+    }
+  }, [plot]);
+
   if (!plot) return null;
 
   const handleWA = () => {
@@ -11,9 +25,9 @@ export default function PlotDetails({ plot, onClose }) {
   };
 
   return (
-    <div id="panel" className={plot ? 'open' : ''}>
+    <div id="panel" className={plot ? 'open' : ''} ref={panelRef}>
       <div className="pi">
-        <div className="phero">
+        <div className="phero gsap-stagger">
           <div className="phg"></div>
           <div className="phgl"></div>
           <div className="phnum headline">{plot.name.replace('Plot ', '')}</div>
@@ -24,7 +38,7 @@ export default function PlotDetails({ plot, onClose }) {
           </div>
         </div>
         <div className="pb">
-          <div className="ps">
+          <div className="ps gsap-stagger">
             <div className={`sbadge ${plot.status}`}><div className="sbdot"></div>{plot.status.charAt(0).toUpperCase() + plot.status.slice(1)}</div>
             {plot.status === 'sold' && plot.soldTo && <div className="sn subhead">Registered to: {plot.soldTo}</div>}
             <div className="pbox brand-frame">
@@ -35,7 +49,7 @@ export default function PlotDetails({ plot, onClose }) {
             </div>
           </div>
 
-          <div className="ps">
+          <div className="ps gsap-stagger">
             <div className="pst headline">Plot Specifications</div>
             <div className="dgrid">
               <div className="spec-item">
@@ -57,7 +71,7 @@ export default function PlotDetails({ plot, onClose }) {
             </div>
           </div>
 
-          <div className="ps">
+          <div className="ps gsap-stagger">
             <div className="pst headline">Proximity to Amenities</div>
             <div className="amen-list">
               {Object.values(AMEN).map((am, i) => {
@@ -79,7 +93,7 @@ export default function PlotDetails({ plot, onClose }) {
             </div>
           </div>
 
-          <div className="ps" style={{ borderBottom: 'none', marginTop: 'auto' }}>
+          <div className="ps gsap-stagger" style={{ borderBottom: 'none', marginTop: 'auto' }}>
             <div className="actrow">
               <button
                 className="btn-brand primary flex-1"

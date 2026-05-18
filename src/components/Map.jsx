@@ -11,14 +11,18 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
   const themeRef = useRef(theme);
   const mapTypeRef = useRef(mapType);
 
+  const viewModeRef = useRef(viewMode);
+
   // Keep refs in sync
   useEffect(() => { themeRef.current = theme; }, [theme]);
   useEffect(() => { mapTypeRef.current = mapType; }, [mapType]);
+  useEffect(() => { viewModeRef.current = viewMode; }, [viewMode]);
 
   const setupLayers = (map) => {
     if (!map || !map.getStyle()) return;
     const currentTheme = themeRef.current;
     const currentMapType = mapTypeRef.current;
+    const currentViewMode = viewModeRef.current;
     const mkGeo = (coords) => ({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] } });
 
     // Colors
@@ -39,31 +43,29 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
       map.addSource('roads', { type: 'geojson', data: { type: 'FeatureCollection', features: [mkGeo(ROAD_COORDS), mkGeo(IROAD1), mkGeo(IROAD2)] } });
     }
     if (!map.getLayer('roads-fill')) {
-      map.addLayer({ id: 'roads-fill', type: 'fill', source: 'roads', paint: { 'fill-color': isSat ? white : (currentTheme === 'dark' ? '#1a1a1a' : '#f0f0f0'), 'fill-opacity': isSat ? 0.1 : 0.8 } });
+      map.addLayer({ id: 'roads-fill', type: 'fill', source: 'roads', paint: { 'fill-color': isSat ? white : (currentTheme === 'dark' ? '#1a1a1a' : '#CBD5E1'), 'fill-opacity': 1 } });
     }
 
-    // Landuse layers - Only in Raster
-    if (!isSat) {
-      if (!map.getSource('parks')) {
-        map.addSource('parks', { type: 'geojson', data: { type: 'FeatureCollection', features: [mkGeo(PARK1), mkGeo(PARK2)] } });
-      }
-      if (!map.getLayer('parks-fill')) {
-        map.addLayer({ id: 'parks-fill', type: 'fill', source: 'parks', paint: { 'fill-color': '#B5D18D', 'fill-opacity': 0.35 } });
-      }
+    // Landuse layers - Always show, solid opacity
+    if (!map.getSource('parks')) {
+      map.addSource('parks', { type: 'geojson', data: { type: 'FeatureCollection', features: [mkGeo(PARK1), mkGeo(PARK2)] } });
+    }
+    if (!map.getLayer('parks-fill')) {
+      map.addLayer({ id: 'parks-fill', type: 'fill', source: 'parks', paint: { 'fill-color': currentTheme === 'dark' ? '#B5D18D' : '#C5E1A5', 'fill-opacity': 1 } });
+    }
 
-      if (!map.getSource('water')) {
-        map.addSource('water', { type: 'geojson', data: { type: 'FeatureCollection', features: [mkGeo(WATER)] } });
-      }
-      if (!map.getLayer('water-fill')) {
-        map.addLayer({ id: 'water-fill', type: 'fill', source: 'water', paint: { 'fill-color': '#CAF0FD', 'fill-opacity': 0.35 } });
-      }
+    if (!map.getSource('water')) {
+      map.addSource('water', { type: 'geojson', data: { type: 'FeatureCollection', features: [mkGeo(WATER)] } });
+    }
+    if (!map.getLayer('water-fill')) {
+      map.addLayer({ id: 'water-fill', type: 'fill', source: 'water', paint: { 'fill-color': currentTheme === 'dark' ? '#CAF0FD' : '#B3E5FC', 'fill-opacity': 1 } });
+    }
 
-      if (!map.getSource('club')) {
-        map.addSource('club', { type: 'geojson', data: { type: 'FeatureCollection', features: [mkGeo(CLUBHOUSE)] } });
-      }
-      if (!map.getLayer('club-fill')) {
-        map.addLayer({ id: 'club-fill', type: 'fill', source: 'club', paint: { 'fill-color': '#FFB9A1', 'fill-opacity': 0.35 } });
-      }
+    if (!map.getSource('club')) {
+      map.addSource('club', { type: 'geojson', data: { type: 'FeatureCollection', features: [mkGeo(CLUBHOUSE)] } });
+    }
+    if (!map.getLayer('club-fill')) {
+      map.addLayer({ id: 'club-fill', type: 'fill', source: 'club', paint: { 'fill-color': currentTheme === 'dark' ? '#FFB9A1' : '#FFCCBC', 'fill-opacity': 1 } });
     }
 
     // Plots
@@ -88,11 +90,12 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
     if (!map.getLayer('plots-fill')) {
       map.addLayer({
         id: 'plots-fill', type: 'fill', source: 'plots',
+        layout: { visibility: currentViewMode === '3D' ? 'none' : 'visible' },
         paint: {
           'fill-color': ['case',
-            ['==', ['get', 'status'], 'sold'], isSat ? '#555555' : (currentTheme === 'dark' ? '#333333' : '#cccccc'),
+            ['==', ['get', 'status'], 'sold'], isSat ? '#555555' : (currentTheme === 'dark' ? '#333333' : '#B4BCC9'),
             ['==', ['get', 'status'], 'reserved'], gold,
-            isSat ? white : (currentTheme === 'dark' ? '#4C586B' : '#DAD4C6')
+            isSat ? white : (currentTheme === 'dark' ? '#4C586B' : '#E2E8ED')
           ],
           'fill-opacity': 1
         }
@@ -101,11 +104,12 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
     if (!map.getLayer('plots-outline')) {
       map.addLayer({
         id: 'plots-outline', type: 'line', source: 'plots',
+        layout: { visibility: currentViewMode === '3D' ? 'none' : 'visible' },
         paint: {
           'line-color': ['case',
-            ['==', ['get', 'status'], 'sold'], '#222222',
+            ['==', ['get', 'status'], 'sold'], currentTheme === 'dark' ? '#222222' : '#8A93A6',
             ['==', ['get', 'status'], 'reserved'], '#b38541',
-            isSat ? '#cccccc' : '#b38541'
+            isSat ? '#cccccc' : (currentTheme === 'dark' ? '#b38541' : '#B3863E')
           ],
           'line-width': 1,
           'line-opacity': 1
@@ -117,12 +121,12 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
     if (!map.getLayer('plots-3d')) {
       map.addLayer({
         id: 'plots-3d', type: 'fill-extrusion', source: 'plots',
-        layout: { visibility: viewMode === '3D' ? 'visible' : 'none' },
+        layout: { visibility: currentViewMode === '3D' ? 'visible' : 'none' },
         paint: {
           'fill-extrusion-color': ['case',
-            ['==', ['get', 'status'], 'sold'], isSat ? '#444444' : (currentTheme === 'dark' ? '#222222' : '#f0f0f0'),
+            ['==', ['get', 'status'], 'sold'], isSat ? '#444444' : (currentTheme === 'dark' ? '#222222' : '#B4BCC9'),
             ['==', ['get', 'status'], 'reserved'], gold,
-            isSat ? white : gold
+            isSat ? white : (currentTheme === 'dark' ? '#4C586B' : '#E2E8ED')
           ],
           'fill-extrusion-height': ['get', 'height'],
           'fill-extrusion-base': 0,
@@ -200,7 +204,14 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
     });
 
     map.on('style.load', () => {
-      if (mapRef.current) setupLayers(mapRef.current);
+      if (mapRef.current) {
+        setupLayers(mapRef.current);
+        // Re-apply 3D camera state if needed
+        if (viewModeRef.current === '3D') {
+          mapRef.current.setPitch(60);
+          mapRef.current.setBearing(-25);
+        }
+      }
     });
 
     return () => map.remove();
@@ -228,13 +239,13 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
     
     map.setPaintProperty('plots-fill', 'fill-color', ['case',
       ['==', ['get', 'id'], activePlot || ''], gold,
-      ['==', ['get', 'status'], 'sold'], isSat ? '#555555' : (theme === 'dark' ? '#333333' : '#cccccc'),
+      ['==', ['get', 'status'], 'sold'], isSat ? '#555555' : (theme === 'dark' ? '#333333' : '#B4BCC9'),
       ['==', ['get', 'status'], 'reserved'], gold,
-      isSat ? white : (theme === 'dark' ? '#4C586B' : '#DAD4C6')
+      isSat ? white : (theme === 'dark' ? '#4C586B' : '#E2E8ED')
     ]);
     map.setPaintProperty('plots-outline', 'line-width', ['case', ['==', ['get', 'id'], activePlot || ''], 2, 1]);
     map.setPaintProperty('plots-outline', 'line-opacity', 1);
-    map.setPaintProperty('plots-outline', 'line-color', ['case', ['==', ['get', 'id'], activePlot || ''], white, isSat ? '#cccccc' : '#b38541']);
+    map.setPaintProperty('plots-outline', 'line-color', ['case', ['==', ['get', 'id'], activePlot || ''], white, isSat ? '#cccccc' : (theme === 'dark' ? '#b38541' : '#B3863E')]);
     
     if (activePlot) {
       const p = plots.find(x => x.name === activePlot);

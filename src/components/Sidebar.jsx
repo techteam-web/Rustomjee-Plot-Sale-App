@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { formatCurrency } from '../utils';
+import gsap from 'gsap';
 
 export default function Sidebar({ 
   plots, 
@@ -17,14 +18,26 @@ export default function Sidebar({
   mapType,
   setMapType
 }) {
+  const sidebarRef = useRef(null);
+
+  useEffect(() => {
+    if (sidebarRef.current) {
+      gsap.fromTo(
+        sidebarRef.current.querySelectorAll('.sbs-stagger'),
+        { opacity: 0, x: -20 },
+        { opacity: 1, x: 0, duration: 0.6, stagger: 0.05, ease: "power2.out", clearProps: "all" }
+      );
+    }
+  }, []);
+
   const availableCount = plots.filter(p => p.status === 'available').length;
   const reservedCount = plots.filter(p => p.status === 'reserved').length;
   const soldCount = plots.filter(p => p.status === 'sold').length;
   const minPrice = Math.min(...plots.map(p => p.pr.total));
 
   return (
-    <div id="sb">
-      <div className="sbs">
+    <div id="sb" ref={sidebarRef}>
+      <div className="sbs sbs-stagger">
         <div className="sbt headline">Map View</div>
         <div className="vtrow" style={{ marginBottom: '12px' }}>
           <div className={`vt ${viewMode === '2D' ? 'on' : ''}`} onClick={() => setViewMode('2D')}>2D Map</div>
@@ -36,7 +49,7 @@ export default function Sidebar({
         </div>
       </div>
 
-      <div className="sbs">
+      <div className="sbs sbs-stagger">
         <div className="sbt headline">Availability</div>
         <div className="leg">
           <div className={`legr ${activeStatus === 'available' ? 'active' : ''}`} onClick={() => setActiveStatus(activeStatus === 'available' ? null : 'available')}>
@@ -57,7 +70,7 @@ export default function Sidebar({
         </div>
       </div>
 
-      <div className="sbs">
+      <div className="sbs sbs-stagger">
         <div className="sbt headline">Filter by Size (sqft)</div>
         <div className="rrow">
           <span className="rv">{sizeRange[0].toLocaleString()}</span>
@@ -88,8 +101,8 @@ export default function Sidebar({
         </div>
       </div>
 
-      <div className="sbs" style={{ paddingBottom: '8px' }}><div className="sbt headline">Plot Inventory</div></div>
-      <div id="plist">
+      <div className="sbs sbs-stagger" style={{ paddingBottom: '8px' }}><div className="sbt headline">Plot Inventory</div></div>
+      <div id="plist" className="sbs-stagger">
         {filteredPlots.map(p => (
           <div 
             key={p.name}
@@ -110,7 +123,7 @@ export default function Sidebar({
         ))}
       </div>
 
-      <div className="sbs" style={{ borderTop: '1px solid var(--border)', borderBottom: 'none' }}>
+      <div className="sbs sbs-stagger" style={{ borderTop: '1px solid var(--border)', borderBottom: 'none' }}>
         <div className="sbt headline">Project Overview</div>
         <div className="sgrid">
           <div className="sc">
