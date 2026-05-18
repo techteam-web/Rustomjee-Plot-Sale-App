@@ -148,9 +148,9 @@ export default function Sidebar({
       <style>{`
         #sb {
           width: 320px; min-width: 320px; background: var(--brand-black);
-          border-right: 1px solid var(--gold-b); display: flex; flex-direction: column; overflow: hidden;
+          border-right: 1px solid var(--gold-b); display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden;
         }
-        .sbs { padding: 20px 24px; border-bottom: 1px solid var(--border); }
+        .sbs { padding: 20px 24px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
         .sbt { font-size: 11px; letter-spacing: 0.2em; color: var(--brand-gold); margin-bottom: 16px; font-weight: 600; }
         .sgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .sc { background: var(--card-bg); border: 1px solid var(--border); padding: 12px; transition: all 0.3s; }
@@ -178,9 +178,9 @@ export default function Sidebar({
         .chip { padding: 6px 10px; border: 1px solid var(--border); font-size: 9px; color: var(--text-muted); cursor: pointer; transition: all 0.3s; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; flex-shrink: 0; }
         .chip.on { border-color: var(--text-secondary); color: var(--bg-primary); background: var(--text-secondary); }
         .chip:hover { border-color: var(--text-secondary); }
-        #plist { flex: 1; overflow-y: auto; background: var(--bg-secondary); }
+        #plist { flex: 1 1 200px; overflow-y: auto; background: var(--bg-secondary); min-height: 200px; }
         .pli { padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;
-               cursor: pointer; border-bottom: 1px solid var(--border); transition: all 0.3s; }
+               cursor: pointer; border-bottom: 1px solid var(--border); transition: all 0.3s; flex-shrink: 0; }
         .pli:hover { background: var(--card-bg); }
         .pli.on { background: var(--card-bg); border-left: 4px solid var(--text-secondary); }
         .pln { font-size: 14px; font-weight: 600; color: var(--text-primary); }
