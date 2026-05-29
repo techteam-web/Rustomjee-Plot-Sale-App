@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar';
 import Map from './components/Map';
 import PlotDetails from './components/PlotDetails';
 import MasterplanModal from './components/MasterplanModal';
+import Homepage from './components/Homepage';
 import { PLOTS_RAW, STATUS_LIST, FACING_LIST, ROAD_LIST, SOLD_NAMES } from './data/plots';
 import { calcPrice } from './utils';
 
@@ -22,6 +23,7 @@ const processedPlots = PLOTS_RAW.map((p, i) => {
 });
 
 function App() {
+  const [page, setPage] = useState('home'); // 'home' | 'explore'
   const [activePlot, setActivePlot] = useState(null);
   const [activeStatus, setActiveStatus] = useState(null);
   const [sizeRange, setSizeRange] = useState([5000, 75000]);
@@ -56,53 +58,63 @@ function App() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      <Header 
+      <Header
         theme={theme}
         onToggleTheme={toggleTheme}
-        onShowMasterplan={() => setShowMasterplan(true)} 
+        page={page}
+        setPage={setPage}
+        onShowMasterplan={() => setShowMasterplan(true)}
         onOpenROI={() => {
           if (!activePlot) alert('Please select a plot first to open the ROI calculator.');
           else document.getElementById('roi-section')?.scrollIntoView({ behavior: 'smooth' });
         }}
       />
-      
-      <div id="app" className="flex flex-1 pt-14">
-        <Sidebar 
-          plots={processedPlots}
-          filteredPlots={filteredPlots}
-          activeStatus={activeStatus}
-          setActiveStatus={setActiveStatus}
-          sizeRange={sizeRange}
-          setSizeRange={setSizeRange}
-          sizeChip={sizeChip}
-          setSizeChip={setSizeChip}
-          activePlot={activePlot}
-          onPlotClick={(p) => setActivePlot(p.name)}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-          mapType={mapType}
-          setMapType={setMapType}
-          theme={theme}
-        />
-        
-        <Map 
-          plots={processedPlots}
-          filteredPlots={filteredPlots}
-          activePlot={activePlot}
-          onPlotClick={(p) => setActivePlot(p.name)}
-          viewMode={viewMode}
-          mapType={mapType}
-          theme={theme}
-        />
-        
-        <PlotDetails 
-          plot={selectedPlotData} 
-          onClose={() => setActivePlot(null)} 
-          theme={theme}
-        />
-      </div>
 
-      <MasterplanModal 
+      {page === 'home' ? (
+        <Homepage
+          plots={processedPlots}
+          onExplore={() => setPage('explore')}
+          onShowMasterplan={() => setShowMasterplan(true)}
+        />
+      ) : (
+        <div id="app" className="flex flex-1 pt-14">
+          <Sidebar
+            plots={processedPlots}
+            filteredPlots={filteredPlots}
+            activeStatus={activeStatus}
+            setActiveStatus={setActiveStatus}
+            sizeRange={sizeRange}
+            setSizeRange={setSizeRange}
+            sizeChip={sizeChip}
+            setSizeChip={setSizeChip}
+            activePlot={activePlot}
+            onPlotClick={(p) => setActivePlot(p.name)}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            mapType={mapType}
+            setMapType={setMapType}
+            theme={theme}
+          />
+
+          <Map
+            plots={processedPlots}
+            filteredPlots={filteredPlots}
+            activePlot={activePlot}
+            onPlotClick={(p) => setActivePlot(p.name)}
+            viewMode={viewMode}
+            mapType={mapType}
+            theme={theme}
+          />
+
+          <PlotDetails
+            plot={selectedPlotData}
+            onClose={() => setActivePlot(null)}
+            theme={theme}
+          />
+        </div>
+      )}
+
+      <MasterplanModal
         show={showMasterplan} 
         onClose={() => setShowMasterplan(false)} 
         theme={theme}
