@@ -111,12 +111,14 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
     if (!map.getLayer('connectivity-line')) {
       map.addLayer({
         id: 'connectivity-line', type: 'line', source: 'connectivity',
+        layout: {
+          'line-cap': 'round',
+          'line-join': 'round'
+        },
         paint: {
           'line-color': '#FFD700',
           'line-width': 6,
-          'line-opacity': 1.0,
-          'line-cap': 'round',
-          'line-join': 'round'
+          'line-opacity': 1.0
         }
       }, 'plots-circle');
     }
