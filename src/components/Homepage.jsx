@@ -197,9 +197,6 @@ export default function Homepage({ plots, onExplore, onShowMasterplan }) {
         </div>
       </section>
 
-      {/* TODO: sections below are not built yet — temporarily disabled. Page ends at "An address that breathes". */}
-      {false && (
-      <>
       {/* ───────────────── CATEGORIES ───────────────── */}
       <section className="cats">
         <div className="sec-head reveal">
@@ -276,8 +273,6 @@ export default function Homepage({ plots, onExplore, onShowMasterplan }) {
           <span>© {new Date().getFullYear()} Rustomjee Group</span>
         </div>
       </footer>
-      </>
-      )}
 
       <style>{`
         #home {

@@ -1,39 +1,70 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Map from './components/Map';
 import PlotDetails from './components/PlotDetails';
 import MasterplanModal from './components/MasterplanModal';
 import Homepage from './components/Homepage';
-import { PLOTS_RAW, STATUS_LIST, FACING_LIST, ROAD_LIST, SOLD_NAMES } from './data/plots';
+import { STATUS_LIST, SOLD_NAMES, AMEN } from './data/plots';
 import { calcPrice } from './utils';
 
-const processedPlots = PLOTS_RAW.map((p, i) => {
-  const pr = calcPrice(p, i);
-  return {
-    ...p,
-    status: STATUS_LIST[i],
-    facing: FACING_LIST[i],
-    road: ROAD_LIST[i],
-    soldTo: STATUS_LIST[i] === 'sold' ? SOLD_NAMES[i % SOLD_NAMES.length] : null,
-    pr,
-    cat: pr.premium > 1000 ? 'Imperial' : pr.premium > 850 ? 'Royal' : pr.premium > 750 ? 'Signature' : pr.premium > 500 ? 'Elite' : pr.premium > 250 ? 'Heritage' : 'Classic',
-    idx: i + 1
-  };
-});
-
 function App() {
-  const [page, setPage] = useState('home'); // 'home' | 'explore'
+  const [page, setPage] = useState('home');
+  const [processedPlots, setProcessedPlots] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activePlot, setActivePlot] = useState(null);
-  const [activeStatus, setActiveStatus] = useState(null);
-  const [sizeRange, setSizeRange] = useState([5000, 75000]);
+  const [activeStatus, setActiveStatus] = useState('available');
+  const [sizeRange, setSizeRange] = useState([2000, 12000]);
   const [sizeChip, setSizeChip] = useState('all');
-  const [viewMode, setViewMode] = useState('2D');
+  const [viewMode, setViewMode] = useState('3D');
   const [showMasterplan, setShowMasterplan] = useState(false);
   const [theme, setTheme] = useState('dark');
-  const [mapType, setMapType] = useState('standard');
+  const [mapType, setMapType] = useState('satellite');
+  const [selectedConnectivity, setSelectedConnectivity] = useState(null);
 
-  React.useEffect(() => {
+  // Load GeoJSON plots + amenities
+  useEffect(() => {
+    Promise.all([
+      fetch('/data/amenities.json').then(r => r.json()),
+      fetch('/data/plots.geojson').then(r => r.json()),
+    ]).then(([amenData, fc]) => {
+      const AMEN_REAL = {
+        club: amenData.club,
+        park1: amenData.park1,
+        park2: amenData.park2,
+        water: amenData.water,
+      };
+
+      const plots = fc.features
+        .filter(f => f.properties.category === 'saleable')
+        .map(f => {
+          const p = f.properties;
+          const center = f.geometry.coordinates;
+          const pr = calcPrice({ center, area_sqft: p.areaSqft }, AMEN_REAL);
+          const statusIdx = p.plotNo % STATUS_LIST.length;
+          return {
+            ...p,
+            name: `Plot ${p.plotNo}`,
+            center,
+            area_sqft: p.areaSqft,
+            area_sqm: p.areaSqm,
+            status: STATUS_LIST[statusIdx],
+            soldTo: STATUS_LIST[statusIdx] === 'sold' ? SOLD_NAMES[p.plotNo % SOLD_NAMES.length] : null,
+            pr,
+            cat: pr.premium > 1000 ? 'Imperial' : pr.premium > 850 ? 'Royal'
+               : pr.premium > 750 ? 'Signature' : pr.premium > 500 ? 'Elite'
+               : pr.premium > 250 ? 'Heritage' : 'Classic',
+          };
+        });
+      setProcessedPlots(plots);
+      setLoading(false);
+    }).catch(err => {
+      console.error('Failed to load plots:', err);
+      setLoading(false);
+    });
+  }, []);
+
+  useEffect(() => {
     document.body.setAttribute('data-theme', theme);
   }, [theme]);
 
@@ -42,19 +73,16 @@ function App() {
   const filteredPlots = useMemo(() => {
     let fp = [...processedPlots];
     if (activeStatus) fp = fp.filter(p => p.status === activeStatus);
-    
     fp = fp.filter(p => p.area_sqft >= sizeRange[0] && p.area_sqft <= sizeRange[1]);
-    
-    if (sizeChip === 's') fp = fp.filter(p => p.area_sqft < 10000);
-    if (sizeChip === 'm') fp = fp.filter(p => p.area_sqft >= 10000 && p.area_sqft <= 30000);
-    if (sizeChip === 'l') fp = fp.filter(p => p.area_sqft > 30000);
-    
+    if (sizeChip === 's') fp = fp.filter(p => p.area_sqft < 3500);
+    if (sizeChip === 'm') fp = fp.filter(p => p.area_sqft >= 3500 && p.area_sqft <= 5000);
+    if (sizeChip === 'l') fp = fp.filter(p => p.area_sqft > 5000);
     return fp;
-  }, [activeStatus, sizeRange, sizeChip]);
+  }, [processedPlots, activeStatus, sizeRange, sizeChip]);
 
   const selectedPlotData = useMemo(() => {
     return processedPlots.find(p => p.name === activePlot) || null;
-  }, [activePlot]);
+  }, [processedPlots, activePlot]);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
@@ -76,6 +104,10 @@ function App() {
           onExplore={() => setPage('explore')}
           onShowMasterplan={() => setShowMasterplan(true)}
         />
+      ) : loading ? (
+        <div style={{flex:1, display:'flex', alignItems:'center', justifyContent:'center'}}>
+          <div className="headline" style={{color:'var(--brand-gold)'}}>Loading plots…</div>
+        </div>
       ) : (
         <div id="app" className="flex flex-1 pt-14">
           <Sidebar
@@ -94,16 +126,18 @@ function App() {
             mapType={mapType}
             setMapType={setMapType}
             theme={theme}
+            selectedConnectivity={selectedConnectivity}
+            setSelectedConnectivity={setSelectedConnectivity}
           />
 
           <Map
             plots={processedPlots}
-            filteredPlots={filteredPlots}
             activePlot={activePlot}
             onPlotClick={(p) => setActivePlot(p.name)}
             viewMode={viewMode}
             mapType={mapType}
             theme={theme}
+            selectedConnectivity={selectedConnectivity}
           />
 
           <PlotDetails

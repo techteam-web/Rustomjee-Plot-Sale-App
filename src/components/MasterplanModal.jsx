@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import mapboxgl from 'mapbox-gl';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { BOUNDARY, PLOTS_RAW, PARK1, PARK2, CLUBHOUSE, WATER, STATUS_LIST } from '../data/plots';
 
 export default function MasterplanModal({ show, onClose, theme }) {
@@ -52,9 +53,12 @@ export default function MasterplanModal({ show, onClose, theme }) {
   };
 
   useEffect(() => {
-    const map = new mapboxgl.Map({
+    const key = import.meta.env.VITE_MAPTILER_KEY;
+    const style = `https://api.maptiler.com/maps/landscape/style.json?key=${key}`;
+
+    const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      style: theme === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11',
+      style: style,
       center: [73.46265, 19.64076],
       zoom: 14.5,
       antialias: true
@@ -85,10 +89,12 @@ export default function MasterplanModal({ show, onClose, theme }) {
     }
   }, [show]);
 
-  // Handle Theme Change
+  // Theme changes don't affect landscape style
   useEffect(() => {
     if (!mapRef.current) return;
-    mapRef.current.setStyle(theme === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11');
+    const key = import.meta.env.VITE_MAPTILER_KEY;
+    const style = `https://api.maptiler.com/maps/landscape/style.json?key=${key}`;
+    mapRef.current.setStyle(style);
   }, [theme]);
 
   return (

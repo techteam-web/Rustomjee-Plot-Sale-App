@@ -34,7 +34,7 @@ export default function PlotDetails({ plot, onClose }) {
           <div className="phx" onClick={onClose}>✕</div>
           <div className="pht">
             <div className="phn headline">{plot.name}</div>
-            <div className="php subhead">{plot.cat} · {plot.facing} Facing</div>
+            <div className="php subhead">{plot.cat}</div>
           </div>
         </div>
         <div className="pb">
@@ -57,16 +57,16 @@ export default function PlotDetails({ plot, onClose }) {
                 <div className="di-v headline gold">{plot.area_sqft.toLocaleString()}</div>
               </div>
               <div className="spec-item">
-                <div className="di-l headline">Facing</div>
-                <div className="di-v headline">{plot.facing}</div>
+                <div className="di-l headline">Area (sqm)</div>
+                <div className="di-v headline">{plot.area_sqm?.toFixed(1)}</div>
               </div>
               <div className="spec-item">
                 <div className="di-l headline">Category</div>
                 <div className="di-v headline">{plot.cat}</div>
               </div>
               <div className="spec-item">
-                <div className="di-l headline">Road Width</div>
-                <div className="di-v headline">{plot.road}</div>
+                <div className="di-l headline">Survey / Owner</div>
+                <div className="di-v headline">{plot.owner || '—'}</div>
               </div>
             </div>
           </div>
@@ -116,7 +116,7 @@ export default function PlotDetails({ plot, onClose }) {
           overflow: hidden; transition: width .4s cubic-bezier(.4,0,.2,1);
           display: flex; flex-direction: column; z-index: 200;
         }
-        #panel.open { width: 400px; min-width: 400px; }
+        #panel.open { width: 340px; min-width: 340px; }
         @media (max-width: 1024px) {
           #panel {
             position: fixed; top: 64px; right: 0; bottom: 0; height: calc(100vh - 64px);
@@ -124,24 +124,25 @@ export default function PlotDetails({ plot, onClose }) {
           }
           #panel.open { width: 100%; min-width: 100%; }
         }
-        .pi { width: 100%; max-width: 400px; margin: 0 auto; overflow-y: auto; height: 100%; display: flex; flex-direction: column; background: var(--bg-primary); }
-        .phero { min-height: 200px; position: relative; overflow: hidden; background: var(--bg-secondary); border-bottom: 1px solid var(--gold-b); display: flex; align-items: flex-end; padding: 24px; padding-top: 40px; }
-        .phnum { position: absolute; top: 10px; right: 10px; font-size: 80px; color: var(--gold-p); font-weight: 900; line-height: 1; pointer-events: none; opacity: 0.8; }
-        .phx { position: absolute; top: 20px; right: 20px; width: 32px; height: 32px; background: var(--card-bg); border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--brand-gold); z-index: 2; transition: all 0.3s; }
+        .pi { width: 100%; max-width: 340px; margin: 0 auto; overflow-y: auto; height: 100%; display: flex; flex-direction: column; background: var(--bg-primary); }
+        .phero { min-height: 100px; position: relative; overflow: hidden; background: var(--bg-secondary); border-bottom: 1px solid var(--gold-b); display: flex; align-items: flex-end; padding: 16px; padding-top: 24px; }
+        .phnum { display: none; }
+        .phx { position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; background: var(--card-bg); border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--brand-gold); z-index: 2; transition: all 0.3s; }
         .phx:hover { background: var(--brand-gold); color: var(--on-gold); }
-        .phn { font-size: 24px; font-weight: 700; color: var(--text-primary); position: relative; z-index: 1; margin-bottom: 4px; }
-        .php { font-size: 11px; color: var(--brand-gold); text-transform: uppercase; letter-spacing: 0.1em; position: relative; z-index: 1; }
-        .pb { padding: 24px; display: flex; flex-direction: column; flex: 1; }
-        .ps { border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 20px; }
-        .pst { font-size: 10px; letter-spacing: 0.2em; color: var(--brand-gold); margin-bottom: 16px; font-weight: 700; }
+        .pht { padding-right: 40px; }
+        .phn { font-size: 20px; font-weight: 700; color: var(--text-primary); position: relative; z-index: 1; margin-bottom: 2px; }
+        .php { font-size: 10px; color: var(--brand-gold); text-transform: uppercase; letter-spacing: 0.1em; position: relative; z-index: 1; }
+        .pb { padding: 16px; display: flex; flex-direction: column; flex: 1; }
+        .ps { border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 14px; }
+        .pst { font-size: 9px; letter-spacing: 0.2em; color: var(--brand-gold); margin-bottom: 12px; font-weight: 700; }
         .sbadge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 700; border: 1px solid var(--border); margin-bottom: 16px; }
         .sbadge.available { color: var(--brand-green); border-color: rgba(181, 209, 141, 0.3); background: rgba(181, 209, 141, 0.05); }
         .sbadge.sold { color: var(--gray); border-color: var(--border); }
         .sbadge.reserved { color: var(--brand-gold); border-color: var(--gold-b); background: var(--gold-p); }
         .sbdot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-        .pbox { background: var(--bg-secondary); padding: 20px; display: flex; align-items: center; justify-content: space-between; margin-top: 4px; border: 1px solid var(--gold-b); }
-        .pmain { font-size: 26px; color: var(--text-primary); font-weight: 700; }
-        .ppsf { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+        .pbox { background: var(--bg-secondary); padding: 14px; display: flex; align-items: center; justify-content: space-between; margin-top: 4px; border: 1px solid var(--gold-b); }
+        .pmain { font-size: 22px; color: var(--text-primary); font-weight: 700; }
+        .ppsf { font-size: 9px; color: var(--text-muted); margin-top: 3px; }
         .ppi-l { font-size: 9px; color: var(--brand-gold); letter-spacing: 0.1em; }
         .ppi-v { font-size: 14px; color: var(--text-secondary); margin-top: 4px; }
         .bdr { background: var(--bg-secondary); padding: 16px; border: 1px solid var(--border); }
@@ -150,19 +151,19 @@ export default function PlotDetails({ plot, onClose }) {
         .bval { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
         .bdiv { height: 1px; background: var(--border); margin: 12px 0; }
         .tot { color: var(--brand-gold) !important; font-size: 14px !important; }
-        .dgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .di-l { font-size: 9px; color: var(--text-muted); letter-spacing: 0.1em; margin-bottom: 4px; }
-        .di-v { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+        .dgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .di-l { font-size: 8px; color: var(--text-muted); letter-spacing: 0.1em; margin-bottom: 3px; }
+        .di-v { font-size: 12px; font-weight: 600; color: var(--text-primary); }
         .gold { color: var(--brand-gold) !important; }
-        .amrow { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+        .amrow { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--border); }
         .amrow:last-child { border-bottom: none; }
-        .aml { display: flex; align-items: center; gap: 14px; flex: 1; }
-        .am-icon { font-size: 20px; width: 24px; }
+        .aml { display: flex; align-items: center; gap: 10px; flex: 1; }
+        .am-icon { font-size: 16px; width: 20px; }
         .am-info { flex: 1; }
-        .am-name { font-size: 12px; color: var(--text-primary); margin-bottom: 6px; }
+        .am-name { font-size: 10px; color: var(--text-primary); margin-bottom: 4px; }
         .ambar { height: 2px; background: var(--border); width: 80%; border-radius: 2px; }
         .amfill { height: 100%; background: var(--brand-gold); border-radius: 2px; }
-        .amdist { font-size: 12px; color: var(--brand-gold); }
+        .amdist { font-size: 10px; color: var(--brand-gold); }
         .roii { display: flex; gap: 12px; margin-bottom: 16px; }
         .roir { flex: 1; }
         .roil { font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
