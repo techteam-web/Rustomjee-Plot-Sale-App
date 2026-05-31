@@ -39,3 +39,11 @@ export function calcPrice(plot, amen) {
 export function formatCurrency(v) {
   return v >= 10000000 ? `₹${(v / 10000000).toFixed(2)} Cr` : `₹${(v / 10000000).toFixed(3)} Cr`;
 }
+
+export function getAmenitiesWithDistance(plotCenter, amenities) {
+  return amenities.map(a => ({
+    ...a,
+    distance: Math.round(hdist(plotCenter, [a.longitude, a.latitude])),
+    distanceKm: (Math.round(hdist(plotCenter, [a.longitude, a.latitude])) / 1000).toFixed(2)
+  })).sort((a, b) => a.distance - b.distance);
+}

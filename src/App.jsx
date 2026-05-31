@@ -70,6 +70,18 @@ function App() {
 
   const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
+  // Plot and connectivity views are mutually exclusive — selecting one clears the other
+  // so their camera animations never fight and no stale highlight lingers.
+  const handleSelectPlot = (name) => {
+    setActivePlot(name);
+    if (name !== null) setSelectedConnectivity(null);
+  };
+
+  const handleSelectConnectivity = (idx) => {
+    setSelectedConnectivity(idx);
+    if (idx !== null && idx !== undefined) setActivePlot(null);
+  };
+
   const filteredPlots = useMemo(() => {
     let fp = [...processedPlots];
     if (activeStatus) fp = fp.filter(p => p.status === activeStatus);
@@ -120,20 +132,20 @@ function App() {
             sizeChip={sizeChip}
             setSizeChip={setSizeChip}
             activePlot={activePlot}
-            onPlotClick={(p) => setActivePlot(p.name)}
+            onPlotClick={(p) => handleSelectPlot(p ? p.name : null)}
             viewMode={viewMode}
             setViewMode={setViewMode}
             mapType={mapType}
             setMapType={setMapType}
             theme={theme}
             selectedConnectivity={selectedConnectivity}
-            setSelectedConnectivity={setSelectedConnectivity}
+            setSelectedConnectivity={handleSelectConnectivity}
           />
 
           <Map
             plots={processedPlots}
             activePlot={activePlot}
-            onPlotClick={(p) => setActivePlot(p.name)}
+            onPlotClick={(p) => handleSelectPlot(p ? p.name : null)}
             viewMode={viewMode}
             mapType={mapType}
             theme={theme}

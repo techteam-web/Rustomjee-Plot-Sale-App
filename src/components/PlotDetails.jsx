@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { formatCurrency, hdist } from '../utils';
+import { formatCurrency, hdist, getAmenitiesWithDistance } from '../utils';
 import { CITIES, AMEN } from '../data/plots';
+import amenitiesData from '../data/amenities.json';
 import gsap from 'gsap';
 
 export default function PlotDetails({ plot, onClose }) {
@@ -90,6 +91,23 @@ export default function PlotDetails({ plot, onClose }) {
                   </div>
                 );
               })}
+            </div>
+          </div>
+
+          <div className="ps gsap-stagger">
+            <div className="pst headline">All Amenities & Distance</div>
+            <div className="amen-list" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+              {getAmenitiesWithDistance(plot.center, amenitiesData).map((am) => (
+                <div key={am.id} className="amrow">
+                  <div className="aml">
+                    <span className="am-icon">📍</span>
+                    <div className="am-info">
+                      <div className="am-name">{am.name}</div>
+                    </div>
+                  </div>
+                  <div className="amdist headline">{am.distanceKm} km</div>
+                </div>
+              ))}
             </div>
           </div>
 

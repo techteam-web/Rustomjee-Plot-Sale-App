@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { formatCurrency } from '../utils';
+import { CONNECTIVITY } from '../data/connectivity';
 import gsap from 'gsap';
 
 export default function Sidebar({
@@ -63,14 +64,6 @@ export default function Sidebar({
   const reservedCount = plots.filter(p => p.status === 'reserved').length;
   const soldCount = plots.filter(p => p.status === 'sold').length;
   const minPrice = Math.min(...plots.map(p => p.pr.total));
-
-  // Connectivity metrics (Kasara Hills, Maharashtra coordinates: 19.6428, 73.4621)
-  const connectivity = [
-    { label: 'Mumbai City', distance: '~58 km', icon: '🚗', time: '1.5h' },
-    { label: 'Navi Mumbai', distance: '~40 km', icon: '🚗', time: '1h' },
-    { label: 'NH-4 (Mumbai-Pune)', distance: '~15 km', icon: '🛣️', time: '20 min' },
-    { label: 'Mumbai Airport', distance: '~90 km', icon: '✈️', time: '2h' }
-  ];
 
   return (
     <div id="sb" ref={sidebarRef}>
@@ -141,9 +134,9 @@ export default function Sidebar({
       <div className="sbs sbs-stagger">
         <div className="sbt headline">Connectivity</div>
         <div className="conn-grid">
-          {connectivity.map((item, idx) => (
+          {CONNECTIVITY.map((item, idx) => (
             <div
-              key={idx}
+              key={item.id}
               className={`conn-card ${selectedConnectivity === idx ? 'active' : ''}`}
               onClick={() => setSelectedConnectivity(selectedConnectivity === idx ? null : idx)}
             >
@@ -151,7 +144,7 @@ export default function Sidebar({
               <div className="conn-info">
                 <div className="conn-label">{item.label}</div>
                 <div className="conn-distance">{item.distance}</div>
-                <div className="conn-time">{item.time}</div>
+                <div className="conn-time">{item.driveTime}</div>
               </div>
             </div>
           ))}
