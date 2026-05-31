@@ -1,22 +1,29 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { formatCurrency } from '../utils';
 import gsap from 'gsap';
+import PlotFinder from './PlotFinder';
 
-export default function Sidebar({ 
-  plots, 
-  filteredPlots, 
-  activeStatus, 
-  setActiveStatus, 
-  sizeRange, 
-  setSizeRange, 
-  sizeChip, 
-  setSizeChip, 
-  activePlot, 
+export default function Sidebar({
+  plots,
+  filteredPlots,
+  activeStatus,
+  setActiveStatus,
+  sizeRange,
+  setSizeRange,
+  sizeChip,
+  setSizeChip,
+  activePlot,
   onPlotClick,
   viewMode,
   setViewMode,
   mapType,
-  setMapType
+  setMapType,
+  terrainExaggeration,
+  setTerrainExaggeration,
+  activeZone,
+  onZoneSelect,
+  onZoneClear,
+  plotElevations,
 }) {
   const sidebarRef = useRef(null);
 
@@ -46,10 +53,29 @@ export default function Sidebar({
         <div className="vtrow">
           <div className={`vt ${mapType === 'standard' ? 'on' : ''}`} onClick={() => setMapType('standard')}>Raster</div>
           <div className={`vt ${mapType === 'satellite' ? 'on' : ''}`} onClick={() => setMapType('satellite')}>Satellite</div>
+          <div className={`vt ${mapType === 'terrain' ? 'on' : ''}`} onClick={() => setMapType('terrain')}>Terrain</div>
         </div>
+        {mapType === 'terrain' && (
+          <div style={{ marginTop: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <span className="sbt headline" style={{ marginBottom: 0 }}>Exaggeration</span>
+              <span style={{ fontSize: '12px', color: 'var(--brand-gold)', fontWeight: 700, fontFamily: 'Inter, sans-serif' }}>{terrainExaggeration.toFixed(1)}×</span>
+            </div>
+            <input
+              type="range" min="1.0" max="3.0" step="0.1"
+              value={terrainExaggeration}
+              onChange={e => setTerrainExaggeration(parseFloat(e.target.value))}
+              style={{ width: '100%' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+              <span style={{ fontSize: '9px', color: 'var(--gray)', letterSpacing: '0.05em' }}>1.0×</span>
+              <span style={{ fontSize: '9px', color: 'var(--gray)', letterSpacing: '0.05em' }}>3.0×</span>
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="sbs sbs-stagger">
+<div className="sbs sbs-stagger">
         <div className="sbt headline">Availability</div>
         <div className="leg">
           <div className={`legr ${activeStatus === 'available' ? 'active' : ''}`} onClick={() => setActiveStatus(activeStatus === 'available' ? null : 'available')}>
@@ -77,31 +103,46 @@ export default function Sidebar({
           <span className="rv">{sizeRange[1].toLocaleString()}</span>
         </div>
         <div className="range-container">
-          <input 
-            type="range" min="5000" max="75000" step="500" 
-            value={sizeRange[0]} 
+          <input
+            type="range" min="1000" max="10000" step="100"
+            value={sizeRange[0]}
             onChange={(e) => setSizeRange([parseInt(e.target.value), sizeRange[1]])}
           />
-          <input 
-            type="range" min="5000" max="75000" step="500" 
-            value={sizeRange[1]} 
+          <input
+            type="range" min="1000" max="10000" step="100"
+            value={sizeRange[1]}
             onChange={(e) => setSizeRange([sizeRange[0], parseInt(e.target.value)])}
           />
         </div>
         <div className="chips">
           {['all', 's', 'm', 'l'].map(chip => (
-            <div 
+            <div
               key={chip}
-              className={`chip ${sizeChip === chip ? 'on' : ''}`} 
+              className={`chip ${sizeChip === chip ? 'on' : ''}`}
               onClick={() => setSizeChip(chip)}
             >
-              {chip === 'all' ? 'All' : chip === 's' ? 'Under 10K' : chip === 'm' ? '10K–30K' : '30K+'}
+              {chip === 'all' ? 'All' : chip === 's' ? 'Under 3K' : chip === 'm' ? '3K–6K' : '6K+'}
             </div>
           ))}
         </div>
       </div>
 
-      <div className="sbs sbs-stagger" style={{ paddingBottom: '8px' }}><div className="sbt headline">Plot Inventory</div></div>
+      <PlotFinder
+        plots={plots}
+        activeZone={activeZone}
+        onZoneSelect={onZoneSelect}
+        onZoneClear={onZoneClear}
+        plotElevations={plotElevations}
+      />
+
+      <div className="sbs sbs-stagger" style={{ paddingBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="sbt headline" style={{ marginBottom: 0 }}>
+          {activeZone ? `${activeZone.icon} ${activeZone.name}` : 'Plot Inventory'}
+        </div>
+        {activeZone && (
+          <div onClick={onZoneClear} style={{ fontSize: '9px', color: 'var(--gray)', cursor: 'pointer', letterSpacing: '0.05em' }}>✕ All</div>
+        )}
+      </div>
       <div id="plist" className="sbs-stagger">
         {filteredPlots.map(p => (
           <div 
@@ -196,6 +237,10 @@ export default function Sidebar({
         .pls.available { color: var(--brand-green); }
         .pls.sold { color: var(--gray); }
         .pls.reserved { color: var(--brand-gold); }
+        .toggle-switch { width: 32px; height: 18px; background: var(--border); border-radius: 9px; position: relative; cursor: pointer; transition: background 0.3s; }
+        .toggle-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: var(--text-primary); border-radius: 50%; transition: left 0.3s; }
+        .toggle-switch.on { background: var(--brand-gold); }
+        .toggle-switch.on::after { left: 16px; background: var(--bg-primary); }
       `}</style>
     </div>
   );

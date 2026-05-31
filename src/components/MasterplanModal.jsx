@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
-import { BOUNDARY, PLOTS_RAW, PARK1, PARK2, CLUBHOUSE, WATER, STATUS_LIST } from '../data/plots';
+import { PLOT_INVENTORY } from '../data/plotInventory';
 
 export default function MasterplanModal({ show, onClose, theme }) {
   const mapRef = useRef(null);
@@ -8,21 +8,11 @@ export default function MasterplanModal({ show, onClose, theme }) {
 
   const setupLayers = (map) => {
     if (!map || !map.getCanvas()) return;
-    
-    // Cleanup existing to be safe if called on style load
-    const mkGeo = (coords) => ({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] } });
 
-    if (!map.getSource('b')) {
-      map.addSource('b', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [BOUNDARY] } } });
-    }
-    if (!map.getLayer('bl')) {
-      map.addLayer({ id: 'bl', type: 'line', source: 'b', paint: { 'line-color': '#CE9A52', 'line-width': 2, 'line-dasharray': [4, 3] } });
-    }
-    
-    const pf = PLOTS_RAW.map((p, i) => ({
+    const pf = PLOT_INVENTORY.map(p => ({
       type: 'Feature',
-      properties: { status: STATUS_LIST[i] },
-      geometry: { type: 'Polygon', coordinates: [p.coords] }
+      properties: { status: p.status },
+      geometry: { type: 'Point', coordinates: [p.longitude, p.latitude] }
     }));
 
     if (!map.getSource('mp')) {
@@ -30,25 +20,17 @@ export default function MasterplanModal({ show, onClose, theme }) {
     }
 
     if (!map.getLayer('mf')) {
-      map.addLayer({ id: 'mf', type: 'fill', source: 'mp', paint: { 'fill-color': ['case', ['==', ['get', 'status'], 'sold'], theme === 'dark' ? '#222' : '#ccc', ['==', ['get', 'status'], 'reserved'], 'rgba(206, 154, 82, 0.35)', theme === 'dark' ? 'rgba(218, 212, 198, 0.25)' : 'rgba(27, 43, 75, 0.1)'], 'fill-opacity': 1 } });
-    }
-    if (!map.getLayer('mo')) {
-      map.addLayer({ id: 'mo', type: 'line', source: 'mp', paint: { 'line-color': ['case', ['==', ['get', 'status'], 'sold'], theme === 'dark' ? '#444' : '#999', ['==', ['get', 'status'], 'reserved'], '#CE9A52', '#CE9A52'], 'line-width': 1 } });
+      map.addLayer({
+        id: 'mf', type: 'circle', source: 'mp',
+        paint: {
+          'circle-radius': 4,
+          'circle-color': ['match', ['get', 'status'], 'sold', '#555555', 'reserved', '#CE9A52', '#00C853'],
+          'circle-stroke-width': 1,
+          'circle-stroke-color': '#FFFFFF'
+        }
+      });
     }
     
-    const addArea = (id, coords, color) => {
-      if (!map.getSource(id)) {
-        map.addSource(id, { type: 'geojson', data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] } } });
-      }
-      if (!map.getLayer(id + '-l')) {
-        map.addLayer({ id: id + '-l', type: 'fill', source: id, paint: { 'fill-color': color, 'fill-opacity': 0.3 } });
-      }
-    };
-    
-    addArea('pk1', PARK1, '#B5D18D');
-    addArea('pk2', PARK2, '#B5D18D');
-    addArea('cl', CLUBHOUSE, '#FFB9A1');
-    addArea('wr', WATER, '#CAF0FD');
   };
 
   useEffect(() => {

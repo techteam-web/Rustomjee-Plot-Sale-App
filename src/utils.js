@@ -1,4 +1,4 @@
-import { AMEN, FACING_LIST, ROAD_LIST } from './data/plots';
+import { AMEN } from './data/plots';
 
 export function hdist(a, b) {
   const R = 6371000;
@@ -8,41 +8,37 @@ export function hdist(a, b) {
   return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
 }
 
-export function calcPrice(plot, idx) {
+export function calcPrice(plot) {
   const BASE = 3500;
   let breakdown = [{ l: 'Base Price', v: BASE, t: 'b' }];
-  
+
   let sizeAdj = plot.area_sqft < 8000 ? 300 : plot.area_sqft > 50000 ? -200 : plot.area_sqft > 30000 ? -100 : 0;
   if (sizeAdj) breakdown.push({ l: 'Size Factor', v: sizeAdj, t: 'a' });
-  
-  const clubDist = Math.round(hdist(plot.center, AMEN.club.center));
+
+  const center = [plot.longitude, plot.latitude];
+
+  const clubDist = Math.round(hdist(center, AMEN.a08.center));
   let clubPrem = clubDist < 150 ? 900 : clubDist < 250 ? 600 : clubDist < 400 ? 350 : clubDist < 600 ? 150 : 0;
   if (clubPrem) breakdown.push({ l: `Clubhouse (${clubDist}m)`, v: clubPrem, t: 'p' });
-  
+
   let parkPrem = 0;
-  [AMEN.park1, AMEN.park2].forEach(pk => {
-    const d = Math.round(hdist(plot.center, pk.center));
+  [AMEN.a06, AMEN.a16, AMEN.a19, AMEN.a26].forEach(pk => {
+    const d = Math.round(hdist(center, pk.center));
     parkPrem += d < 150 ? 600 : d < 250 ? 350 : d < 400 ? 200 : d < 600 ? 80 : 0;
   });
   parkPrem = Math.min(parkPrem, 900);
   if (parkPrem) breakdown.push({ l: 'Park Proximity', v: parkPrem, t: 'p' });
-  
-  const waterDist = Math.round(hdist(plot.center, AMEN.water.center));
+
+  const waterDist = Math.round(hdist(center, AMEN.a21.center));
   let waterPrem = waterDist < 150 ? 400 : waterDist < 300 ? 200 : waterDist < 500 ? 100 : 0;
   if (waterPrem) breakdown.push({ l: `Water View (${waterDist}m)`, v: waterPrem, t: 'p' });
-  
-  const facingPrem = { 'North-East': 200, 'East': 200, 'North': 150, 'North-West': 100, 'South-East': 50 }[FACING_LIST[idx]] || 0;
-  if (facingPrem) breakdown.push({ l: `${FACING_LIST[idx]} Facing`, v: facingPrem, t: 'p' });
-  
-  const roadPrem = ROAD_LIST[idx] === '15m Main Road' ? 200 : 0;
-  if (roadPrem) breakdown.push({ l: '15m Road Frontage', v: roadPrem, t: 'p' });
-  
-  const psf = BASE + sizeAdj + clubPrem + parkPrem + waterPrem + facingPrem + roadPrem;
+
+  const psf = BASE + sizeAdj + clubPrem + parkPrem + waterPrem;
   return {
     psf,
     total: Math.round(psf * plot.area_sqft),
     breakdown,
-    premium: clubPrem + parkPrem + waterPrem + facingPrem + roadPrem,
+    premium: clubPrem + parkPrem + waterPrem,
     clubDist,
     waterDist
   };

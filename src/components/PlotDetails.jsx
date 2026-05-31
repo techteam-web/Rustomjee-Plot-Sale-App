@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
+import { useEffect, useRef } from 'react';
 import { formatCurrency, hdist } from '../utils';
 import { CITIES, AMEN } from '../data/plots';
 import gsap from 'gsap';
@@ -8,19 +9,20 @@ export default function PlotDetails({ plot, onClose }) {
 
   useEffect(() => {
     if (plot && panelRef.current) {
-      // Trigger GSAP animation when a new plot is selected
       gsap.fromTo(
         panelRef.current.querySelectorAll('.gsap-stagger'),
         { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.6, stagger: 0.1, ease: "power3.out", clearProps: "all" }
+        { opacity: 1, y: 0, duration: 0.6, stagger: 0.1, ease: 'power3.out', clearProps: 'all' }
       );
     }
   }, [plot]);
 
   if (!plot) return null;
 
+  const center = [plot.longitude, plot.latitude];
+
   const handleWA = () => {
-    const msg = `Hi, I'm interested in ${plot.name} at Rustomjee Kasara Hill Estates.\n\nArea: ${plot.area_sqft.toLocaleString()} sqft\nPrice: ${formatCurrency(plot.pr.total)} (₹${plot.pr.psf.toLocaleString()}/sqft)\nStatus: ${plot.status}\n\nKindly share more details.`;
+    const msg = `Hi, I'm interested in ${plot.name} at Rustomjee Kasara Hill Estates.\n\nArea: ${plot.area_sqft.toLocaleString()} sqft (${plot.area_sqm} sq.m)\nPrice: ${formatCurrency(plot.pr.total)} (₹${plot.pr.psf.toLocaleString()}/sqft)\nStatus: ${plot.status}\n\nKindly share more details.`;
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
@@ -30,17 +32,16 @@ export default function PlotDetails({ plot, onClose }) {
         <div className="phero gsap-stagger">
           <div className="phg"></div>
           <div className="phgl"></div>
-          <div className="phnum headline">{plot.name.replace('Plot ', '')}</div>
+          <div className="phnum headline">{plot.plotNo}</div>
           <div className="phx" onClick={onClose}>✕</div>
           <div className="pht">
             <div className="phn headline">{plot.name}</div>
-            <div className="php subhead">{plot.cat} · {plot.facing} Facing</div>
+            <div className="php subhead">{plot.cat} · {plot.type}</div>
           </div>
         </div>
         <div className="pb">
           <div className="ps gsap-stagger">
             <div className={`sbadge ${plot.status}`}><div className="sbdot"></div>{plot.status.charAt(0).toUpperCase() + plot.status.slice(1)}</div>
-            {plot.status === 'sold' && plot.soldTo && <div className="sn subhead">Registered to: {plot.soldTo}</div>}
             <div className="pbox brand-frame">
               <div>
                 <div className="pmain headline">{formatCurrency(plot.pr.total)}</div>
@@ -57,16 +58,24 @@ export default function PlotDetails({ plot, onClose }) {
                 <div className="di-v headline gold">{plot.area_sqft.toLocaleString()}</div>
               </div>
               <div className="spec-item">
-                <div className="di-l headline">Facing</div>
-                <div className="di-v headline">{plot.facing}</div>
+                <div className="di-l headline">Area (sq.m)</div>
+                <div className="di-v headline">{plot.area_sqm}</div>
+              </div>
+              <div className="spec-item">
+                <div className="di-l headline">Corner Area</div>
+                <div className="di-v headline">{plot.corner_sqm ? `${plot.corner_sqm} sq.m` : '—'}</div>
+              </div>
+              <div className="spec-item">
+                <div className="di-l headline">Total Area</div>
+                <div className="di-v headline">{plot.total_sqm} sq.m</div>
+              </div>
+              <div className="spec-item">
+                <div className="di-l headline">Type</div>
+                <div className="di-v headline">{plot.type}</div>
               </div>
               <div className="spec-item">
                 <div className="di-l headline">Category</div>
                 <div className="di-v headline">{plot.cat}</div>
-              </div>
-              <div className="spec-item">
-                <div className="di-l headline">Road Width</div>
-                <div className="di-v headline">{plot.road}</div>
               </div>
             </div>
           </div>
@@ -75,7 +84,7 @@ export default function PlotDetails({ plot, onClose }) {
             <div className="pst headline">Proximity to Amenities</div>
             <div className="amen-list">
               {Object.values(AMEN).map((am, i) => {
-                const d = Math.round(hdist(plot.center, am.center));
+                const d = Math.round(hdist(center, am.center));
                 const pct = Math.max(5, Math.min(100, 100 - d / am.max * 100));
                 return (
                   <div key={i} className="amrow">
@@ -135,22 +144,15 @@ export default function PlotDetails({ plot, onClose }) {
         .ps { border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 20px; }
         .pst { font-size: 10px; letter-spacing: 0.2em; color: var(--brand-gold); margin-bottom: 16px; font-weight: 700; }
         .sbadge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 700; border: 1px solid var(--border); margin-bottom: 16px; }
-        .sbadge.available { color: var(--brand-green); border-color: rgba(181, 209, 141, 0.3); background: rgba(181, 209, 141, 0.05); }
+        .sbadge.available { color: var(--brand-green); border-color: rgba(181,209,141,0.3); background: rgba(181,209,141,0.05); }
         .sbadge.sold { color: var(--gray); border-color: var(--border); }
         .sbadge.reserved { color: var(--brand-gold); border-color: var(--gold-b); background: var(--gold-p); }
         .sbdot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
         .pbox { background: var(--bg-secondary); padding: 20px; display: flex; align-items: center; justify-content: space-between; margin-top: 4px; border: 1px solid var(--gold-b); }
         .pmain { font-size: 26px; color: var(--text-primary); font-weight: 700; }
         .ppsf { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
-        .ppi-l { font-size: 9px; color: var(--brand-gold); letter-spacing: 0.1em; }
-        .ppi-v { font-size: 14px; color: var(--text-secondary); margin-top: 4px; }
-        .bdr { background: var(--bg-secondary); padding: 16px; border: 1px solid var(--border); }
-        .brow { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
-        .blbl { font-size: 12px; color: var(--text-muted); }
-        .bval { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
-        .bdiv { height: 1px; background: var(--border); margin: 12px 0; }
-        .tot { color: var(--brand-gold) !important; font-size: 14px !important; }
         .dgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .spec-item {}
         .di-l { font-size: 9px; color: var(--text-muted); letter-spacing: 0.1em; margin-bottom: 4px; }
         .di-v { font-size: 14px; font-weight: 600; color: var(--text-primary); }
         .gold { color: var(--brand-gold) !important; }
@@ -163,15 +165,6 @@ export default function PlotDetails({ plot, onClose }) {
         .ambar { height: 2px; background: var(--border); width: 80%; border-radius: 2px; }
         .amfill { height: 100%; background: var(--brand-gold); border-radius: 2px; }
         .amdist { font-size: 12px; color: var(--brand-gold); }
-        .roii { display: flex; gap: 12px; margin-bottom: 16px; }
-        .roir { flex: 1; }
-        .roil { font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
-        .roiinp { background: var(--card-bg); border: 1px solid var(--border); color: var(--text-primary); padding: 8px; font-size: 13px; width: 100%; outline: none; transition: border-color 0.3s; }
-        .roiinp:focus { border-color: var(--brand-gold); }
-        .roigrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .roic { background: var(--gold-p); border: 1px solid var(--gold-b); padding: 14px; text-align: center; }
-        .roicl { font-size: 9px; color: var(--text-muted); margin-bottom: 6px; }
-        .roicv { font-size: 16px; color: var(--text-primary); }
         .actrow { display: flex; gap: 12px; }
       `}</style>
     </div>
