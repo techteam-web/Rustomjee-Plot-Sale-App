@@ -20,13 +20,14 @@ function geoBearing(origin, dest) {
   return (toDeg(Math.atan2(y, x)) + 360) % 360; // normalized 0..360
 }
 
-export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType, theme, selectedConnectivity }) {
+export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType, theme, selectedConnectivity, activeZone }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const themeRef = useRef(theme);
   const mapTypeRef = useRef(mapType);
   const viewModeRef = useRef(viewMode);
   const selectedConnectivityRef = useRef(selectedConnectivity);
+  const activeZoneRef = useRef(activeZone);
   const rotationAnimationRef = useRef(null);
   const stopRotationRef = useRef(null);
   const startRotationRef = useRef(null);
@@ -51,6 +52,7 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
   useEffect(() => { mapTypeRef.current = mapType; }, [mapType]);
   useEffect(() => { viewModeRef.current = viewMode; }, [viewMode]);
   useEffect(() => { selectedConnectivityRef.current = selectedConnectivity; }, [selectedConnectivity]);
+  useEffect(() => { activeZoneRef.current = activeZone; }, [activeZone]);
 
   const getStyle = () => {
     const key = import.meta.env.VITE_MAPTILER_KEY;
@@ -103,12 +105,22 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
     }
 
     // Plots circle layer (from GeoJSON with static status property)
+    // Clustering: nearby plots group into bubbles below clusterMaxZoom; the
+    // individual-plot layers below filter to unclustered leaves (!point_count)
+    // so the existing click/hover/highlight wiring keeps working unchanged.
     if (!map.getSource('plots')) {
-      map.addSource('plots', { type: 'geojson', data: '/data/plots.geojson' });
+      map.addSource('plots', {
+        type: 'geojson',
+        data: '/data/plots.geojson',
+        cluster: true,
+        clusterMaxZoom: 14,
+        clusterRadius: 45,
+      });
     }
     if (!map.getLayer('plots-circle')) {
       map.addLayer({
         id: 'plots-circle', type: 'circle', source: 'plots',
+        filter: ['!', ['has', 'point_count']],
         paint: {
           'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 4, 16, 8, 18, 14],
           'circle-color': ['case',
@@ -158,6 +170,7 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
     if (!map.getLayer('plots-glow')) {
       map.addLayer({
         id: 'plots-glow', type: 'circle', source: 'plots',
+        filter: ['!', ['has', 'point_count']],
         paint: {
           'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 6, 16, 10, 18, 16],
           'circle-color': '#FFFFFF',
@@ -203,13 +216,40 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
       map.addLayer({
         id: 'plots-label', type: 'symbol', source: 'plots',
         minzoom: 16.5,
-        filter: ['==', ['get', 'category'], 'saleable'],
+        filter: ['all', ['==', ['get', 'category'], 'saleable'], ['!', ['has', 'point_count']]],
         layout: {
           'text-field': ['to-string', ['get', 'plotNo']],
           'text-size': 9,
           'text-allow-overlap': false,
         },
         paint: { 'text-color': '#FFFFFF', 'text-halo-color': '#000000', 'text-halo-width': 1 },
+      });
+    }
+
+    // Cluster bubbles (only render aggregated points — those carrying point_count).
+    // Added last so they sit on top of the individual plot dots for visibility.
+    if (!map.getLayer('clusters')) {
+      map.addLayer({
+        id: 'clusters', type: 'circle', source: 'plots',
+        filter: ['has', 'point_count'],
+        paint: {
+          'circle-color': ['step', ['get', 'point_count'], '#CE9A52', 10, '#C4883E', 30, '#B4782E'],
+          'circle-radius': ['step', ['get', 'point_count'], 16, 10, 22, 30, 28],
+          'circle-opacity': 0.9,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#FFFFFF',
+        },
+      });
+    }
+    if (!map.getLayer('cluster-count')) {
+      map.addLayer({
+        id: 'cluster-count', type: 'symbol', source: 'plots',
+        filter: ['has', 'point_count'],
+        layout: {
+          'text-field': ['get', 'point_count_abbreviated'],
+          'text-size': 12,
+        },
+        paint: { 'text-color': '#000000' },
       });
     }
   };
@@ -376,6 +416,23 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
       map.on('mouseenter', 'plots-label', () => updateCursor('pointer'));
       map.on('mouseleave', 'plots-label', () => updateCursor(''));
 
+      // Cluster: click a bubble to zoom in until it expands into individual plots
+      map.on('click', 'clusters', (e) => {
+        const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
+        if (!features.length) return;
+        const clusterId = features[0].properties.cluster_id;
+        const src = map.getSource('plots');
+        if (!src || !src.getClusterExpansionZoom) return;
+        // maplibre-gl v5: getClusterExpansionZoom is Promise-based (no callback form)
+        src.getClusterExpansionZoom(clusterId)
+          .then((zoom) => {
+            map.easeTo({ center: features[0].geometry.coordinates, zoom: zoom + 0.5, duration: 600 });
+          })
+          .catch(() => {});
+      });
+      map.on('mouseenter', 'clusters', () => updateCursor('pointer'));
+      map.on('mouseleave', 'clusters', () => updateCursor(''));
+
       const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 10, className: 'mbpop' });
 
       const handleMouseMove = (e) => {
@@ -405,10 +462,23 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
 
     map.on('style.load', () => {
       if (mapRef.current) {
-        applyMapLayers(mapRef.current);
+        const m = mapRef.current;
+        applyMapLayers(m);
+        // A style swap (theme / map-type change) rebuilds all layers with their
+        // default paint, wiping any active zone dimming. Restore it from the ref.
+        const zone = activeZoneRef.current;
+        if (m.getLayer('plots-circle')) {
+          if (zone && zone.plotSet) {
+            const names = [...zone.plotSet];
+            m.setPaintProperty('plots-circle', 'circle-opacity',
+              ['case', ['in', ['get', 'name'], ['literal', names]], 0.9, 0.12]);
+          } else {
+            m.setPaintProperty('plots-circle', 'circle-opacity', 0.55);
+          }
+        }
         if (viewModeRef.current === '3D') {
-          mapRef.current.setPitch(60);
-          mapRef.current.setBearing(-15);
+          m.setPitch(60);
+          m.setBearing(-15);
         }
       }
     });
@@ -507,6 +577,20 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
     map.setPaintProperty('amenities-circle', 'circle-radius', ['case', activePlot ? true : false, 7, 5]);
     map.setPaintProperty('amenities-circle', 'circle-stroke-width', ['case', activePlot ? true : false, 2, 1]);
   }, [activePlot, theme, mapType]);
+
+  // Zone highlighting: dim plots outside the selected zone (matched by plot name)
+  useEffect(() => {
+    if (!mapRef.current || !mapRef.current.isStyleLoaded()) return;
+    const map = mapRef.current;
+    if (!map.getLayer('plots-circle')) return;
+    if (activeZone && activeZone.plotSet) {
+      const names = [...activeZone.plotSet];
+      map.setPaintProperty('plots-circle', 'circle-opacity',
+        ['case', ['in', ['get', 'name'], ['literal', names]], 0.9, 0.12]);
+    } else {
+      map.setPaintProperty('plots-circle', 'circle-opacity', 0.55);
+    }
+  }, [activeZone, theme, mapType]);
 
   // Handle View Mode
   useEffect(() => {

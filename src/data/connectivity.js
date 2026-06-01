@@ -10,7 +10,7 @@ export const CONNECTIVITY = [
     id: 'mumbai-city',
     label: 'Mumbai City',
     coords: [72.8347, 18.9388], // [lng, lat]
-    distance: '~122 km',
+    distance: '98 km',
     driveTime: '2.5h',
     icon: '🏙️',
   },
@@ -26,16 +26,18 @@ export const CONNECTIVITY = [
     id: 'nashik',
     label: 'Nashik',
     coords: [73.7910, 19.9973],
-    distance: '~65 km',
+    distance: '68 km',
     driveTime: '1h',
     icon: '🚗',
   },
   {
     id: 'samruddhi',
-    label: 'Samruddhi (Highway)',
+    label: 'Samruddhi Expressway',
+    // PDF: project connects to the Mumbai–Nagpur Samruddhi at 19.634989, 73.461891.
+    // Route target kept at the nearby interchange so the Home route viz still draws.
     coords: [73.5626, 19.6900],
-    distance: '~20 km',
-    driveTime: '25 min',
+    distance: 'Well Connected',
+    driveTime: 'Direct access',
     icon: '🛣️',
   },
 ];

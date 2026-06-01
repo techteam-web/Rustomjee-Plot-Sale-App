@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { formatCurrency } from '../utils';
 import { CONNECTIVITY } from '../data/connectivity';
 import gsap from 'gsap';
+import PlotFinder from './PlotFinder';
 
 export default function Sidebar({
   plots,
@@ -19,7 +20,11 @@ export default function Sidebar({
   mapType,
   setMapType,
   selectedConnectivity,
-  setSelectedConnectivity
+  setSelectedConnectivity,
+  activeZone,
+  onZoneSelect,
+  onZoneClear,
+  plotElevations,
 }) {
   const sidebarRef = useRef(null);
   const legTrackRef = useRef(null);
@@ -130,6 +135,14 @@ export default function Sidebar({
           ))}
         </div>
       </div>
+
+      <PlotFinder
+        plots={plots}
+        activeZone={activeZone}
+        onZoneSelect={onZoneSelect}
+        onZoneClear={onZoneClear}
+        plotElevations={plotElevations || {}}
+      />
 
       <div className="sbs sbs-stagger">
         <div className="sbt headline">Connectivity</div>

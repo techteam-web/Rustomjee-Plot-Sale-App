@@ -4,7 +4,8 @@ import Sidebar from './components/Sidebar';
 import Map from './components/Map';
 import PlotDetails from './components/PlotDetails';
 import MasterplanModal from './components/MasterplanModal';
-import Homepage from './components/Homepage';
+import NeighbourhoodPanel from './components/NeighbourhoodPanel';
+import NeighbourhoodMap from './components/NeighbourhoodMap';
 import { STATUS_LIST, SOLD_NAMES, AMEN } from './data/plots';
 import { calcPrice } from './utils';
 
@@ -21,6 +22,15 @@ function App() {
   const [theme, setTheme] = useState('dark');
   const [mapType, setMapType] = useState('satellite');
   const [selectedConnectivity, setSelectedConnectivity] = useState(null);
+  const [activeZone, setActiveZone] = useState(null);
+  const [plotElevations, setPlotElevations] = useState({});
+
+  // Neighbourhood (explore) view state
+  const [selectedPlace, setSelectedPlace] = useState(null);
+  const [activeTour, setActiveTour] = useState(null);
+  const [tourPlayToken, setTourPlayToken] = useState(0);
+  const [tourStep, setTourStep] = useState(null);
+  const [playing, setPlaying] = useState(false);
 
   // Load GeoJSON plots + amenities
   useEffect(() => {
@@ -46,6 +56,8 @@ function App() {
             ...p,
             name: `Plot ${p.plotNo}`,
             center,
+            latitude: center[1],
+            longitude: center[0],
             area_sqft: p.areaSqft,
             area_sqm: p.areaSqm,
             status: STATUS_LIST[statusIdx],
@@ -82,6 +94,22 @@ function App() {
     if (idx !== null && idx !== undefined) setActivePlot(null);
   };
 
+  // Neighbourhood handlers
+  const handlePlayTour = (groupId) => {
+    setActiveTour(groupId);
+    setSelectedPlace(null);
+    setTourStep(0);
+    setPlaying(true);
+    setTourPlayToken((t) => t + 1);
+  };
+  const handleStopTour = () => {
+    setPlaying(false);
+  };
+  const handleSelectPlace = (id) => {
+    setSelectedPlace(id);
+    if (id !== null) setPlaying(false);
+  };
+
   const filteredPlots = useMemo(() => {
     let fp = [...processedPlots];
     if (activeStatus) fp = fp.filter(p => p.status === activeStatus);
@@ -110,15 +138,32 @@ function App() {
         }}
       />
 
-      {page === 'home' ? (
-        <Homepage
-          plots={processedPlots}
-          onExplore={() => setPage('explore')}
-          onShowMasterplan={() => setShowMasterplan(true)}
-        />
-      ) : loading ? (
+      {loading ? (
         <div style={{flex:1, display:'flex', alignItems:'center', justifyContent:'center'}}>
           <div className="headline" style={{color:'var(--brand-gold)'}}>Loading plots…</div>
+        </div>
+      ) : page === 'explore' ? (
+        <div id="app" className="flex flex-1 pt-14">
+          <NeighbourhoodPanel
+            activeTour={activeTour}
+            onPlayTour={handlePlayTour}
+            onStopTour={handleStopTour}
+            playing={playing}
+            tourStep={tourStep}
+            selectedPlace={selectedPlace}
+            onSelectPlace={handleSelectPlace}
+          />
+          <NeighbourhoodMap
+            theme={theme}
+            mapType={mapType}
+            selectedPlace={selectedPlace}
+            tour={activeTour}
+            tourPlayToken={tourPlayToken}
+            playing={playing}
+            onTourStep={setTourStep}
+            onTourEnd={handleStopTour}
+            onSelectPlace={handleSelectPlace}
+          />
         </div>
       ) : (
         <div id="app" className="flex flex-1 pt-14">
@@ -140,6 +185,10 @@ function App() {
             theme={theme}
             selectedConnectivity={selectedConnectivity}
             setSelectedConnectivity={handleSelectConnectivity}
+            activeZone={activeZone}
+            onZoneSelect={setActiveZone}
+            onZoneClear={() => setActiveZone(null)}
+            plotElevations={plotElevations}
           />
 
           <Map
@@ -150,6 +199,7 @@ function App() {
             mapType={mapType}
             theme={theme}
             selectedConnectivity={selectedConnectivity}
+            activeZone={activeZone}
           />
 
           <PlotDetails
