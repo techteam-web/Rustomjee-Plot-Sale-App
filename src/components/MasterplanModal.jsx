@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
-import mapboxgl from 'mapbox-gl';
+import maplibregl from 'maplibre-gl';
+
+const MAPTILER_KEY = 'Z9dW9MP2fONkRosZa0j0';
 import { PLOT_INVENTORY } from '../data/plotInventory';
 
 export default function MasterplanModal({ show, onClose, theme }) {
@@ -34,9 +36,9 @@ export default function MasterplanModal({ show, onClose, theme }) {
   };
 
   useEffect(() => {
-    const map = new mapboxgl.Map({
+    const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      style: theme === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11',
+      style: `https://api.maptiler.com/maps/019e818f-2ef6-77ca-af90-84fedc9100a3/style.json?key=${MAPTILER_KEY}`,
       center: [73.46265, 19.64076],
       zoom: 14.5,
       antialias: true
@@ -70,30 +72,30 @@ export default function MasterplanModal({ show, onClose, theme }) {
   // Handle Theme Change
   useEffect(() => {
     if (!mapRef.current) return;
-    mapRef.current.setStyle(theme === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11');
+    mapRef.current.setStyle(`https://api.maptiler.com/maps/019e818f-2ef6-77ca-af90-84fedc9100a3/style.json?key=${MAPTILER_KEY}`);
   }, [theme]);
 
   return (
     <div id="mpmod" className={show ? 'show' : ''} onClick={onClose}>
       <div className="mpinner brand-frame" onClick={e => e.stopPropagation()}>
         <div className="mpclose" onClick={onClose}>✕</div>
-        <div className="mptitle headline">Belle Vie · Masterplan</div>
-        <div className="mpsub subhead">35.6 Hectares · 18 Premium Residential Plots</div>
+        <div className="mptitle headline">Belle Vie · Kasara Hills</div>
+        <div className="mpsub subhead">482 Plots · 5 Lifestyle Zones · 35.6 Hectares · 26 Amenities</div>
         <div className="mpgrid">
           <div className="mpcard">
             <div className="mpcico">🏡</div>
-            <div className="mpctit headline">18 Premium Plots</div>
-            <div className="mpcdesc">Individually curated plots with panoramic hill views.</div>
+            <div className="mpctit headline">482 Residential Plots</div>
+            <div className="mpcdesc">Five curated zones across Kasara Hills — Gateway District, Recreation Hub, Garden Valley, Forest Ridge & Water's Edge.</div>
           </div>
           <div className="mpcard">
-            <div className="mpcico">🌳</div>
-            <div className="mpctit headline">Nature Trails</div>
-            <div className="mpcdesc">Over 41,000 sqm of landscaped greens and walking trails.</div>
+            <div className="mpcico">🌿</div>
+            <div className="mpctit headline">26 Amenities</div>
+            <div className="mpcdesc">Nature trails, bamboo groves, elevated walkway, viewpoint, oasis parks, water reservoir dam, and serenity gardens.</div>
           </div>
           <div className="mpcard">
             <div className="mpcico">🏛️</div>
-            <div className="mpctit headline">Clubhouse</div>
-            <div className="mpcdesc">A signature Rustomjee experience with world-class amenities.</div>
+            <div className="mpctit headline">Valley Vista Clubhouse</div>
+            <div className="mpcdesc">Swimming pool, Pavilion Clubhouse, Joy Junction Kids Park and scenic hill views across the entire estate.</div>
           </div>
         </div>
         <div id="mpmap" ref={mapContainerRef}></div>

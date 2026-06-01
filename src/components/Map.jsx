@@ -1,11 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import mapboxgl from 'mapbox-gl';
+import maplibregl from 'maplibre-gl';
 import { formatCurrency } from '../utils';
 
-mapboxgl.accessToken = 'pk.eyJ1IjoibmlsZXNocGF0aGFyZSIsImEiOiJjbTAyOTVjYXMwMDVtMm5zNnpvaHlmaDZjIn0.MBcXShFJ8vc1cl26zkTcfQ';
+const MAPTILER_KEY = 'Z9dW9MP2fONkRosZa0j0';
+const CUSTOM_STYLE = `https://api.maptiler.com/maps/019e818f-2ef6-77ca-af90-84fedc9100a3/style.json?key=${MAPTILER_KEY}`;
 
-const DEM_SOURCE = 'mapbox-dem';
-const DEM_URL    = 'mapbox://mapbox.mapbox-terrain-dem-v1';
+const DEM_SOURCE = 'maptiler-dem';
+const DEM_URL    = `https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=${MAPTILER_KEY}`;
 
 export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType, theme, masterplanOpacity, showMasterplanOverlay, showMarkers, activeZone, onElevationsLoaded, terrainExaggeration }) {
   const mapContainerRef = useRef(null);
@@ -70,7 +71,7 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
 
   const addContourLayers = (map) => {
     if (!map.getSource('terrain-contour')) {
-      map.addSource('terrain-contour', { type: 'vector', url: 'mapbox://mapbox.mapbox-terrain-v2' });
+      map.addSource('terrain-contour', { type: 'vector', url: `https://api.maptiler.com/tiles/contours/tiles.json?key=${MAPTILER_KEY}` });
     }
     if (!map.getLayer('contour-lines')) {
       map.addLayer({
@@ -92,7 +93,7 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
           'symbol-placement': 'line',
           'text-field': ['concat', ['to-string', ['get', 'ele']], 'm'],
           'text-size': 9,
-          'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
+          'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
         },
         paint: {
           'text-color': 'rgba(255,200,50,1)',
@@ -148,36 +149,86 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
       map.addLayer({
         id: 'masterplan-img-layer', type: 'raster', source: 'masterplan-img',
         layout: { visibility: showMasterplanOverlayRef.current ? 'visible' : 'none' },
-        paint: { 'raster-opacity': masterplanOpacityRef.current / 100, 'raster-blend': 'screen' }
+        paint: { 'raster-opacity': masterplanOpacityRef.current / 100 }
       });
     }
 
-    // Plot markers
+    // Plot markers source (clustered)
     if (!map.getSource('kml-markers')) {
       map.addSource('kml-markers', {
         type: 'geojson',
-        data: { type: 'FeatureCollection', features: buildMarkerFeatures(plotsRef.current) }
+        data: { type: 'FeatureCollection', features: buildMarkerFeatures(plotsRef.current) },
+        cluster: true,
+        clusterMaxZoom: 14,
+        clusterRadius: 45,
       });
     }
     if (isTerrainMode) addContourLayers(map);
 
+    // Cluster bubble
+    if (!map.getLayer('clusters')) {
+      map.addLayer({
+        id: 'clusters',
+        type: 'circle',
+        source: 'kml-markers',
+        filter: ['has', 'point_count'],
+        layout: { visibility: showMarkersRef.current ? 'visible' : 'none' },
+        paint: {
+          'circle-color': [
+            'step', ['get', 'point_count'],
+            '#B8892A', 20, '#9C7120', 60, '#7A5615'
+          ],
+          'circle-radius': ['step', ['get', 'point_count'], 20, 20, 28, 60, 36],
+          'circle-stroke-width': 1,
+          'circle-stroke-color': 'rgba(206,154,82,0.45)',
+          'circle-opacity': 0.72,
+          'circle-blur': 0.08,
+        }
+      });
+    }
+
+    // Cluster count label
+    if (!map.getLayer('cluster-count')) {
+      map.addLayer({
+        id: 'cluster-count',
+        type: 'symbol',
+        source: 'kml-markers',
+        filter: ['has', 'point_count'],
+        layout: {
+          'text-field': ['get', 'point_count_abbreviated'],
+          'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+          'text-size': 11,
+          visibility: showMarkersRef.current ? 'visible' : 'none',
+        },
+        paint: {
+          'text-color': 'rgba(255,245,220,0.95)',
+          'text-halo-color': 'rgba(0,0,0,0.25)',
+          'text-halo-width': 0.5,
+        }
+      });
+    }
+
+    // Individual plot circles (unclustered only)
     if (!map.getLayer('kml-markers-layer')) {
       map.addLayer({
         id: 'kml-markers-layer',
         type: 'circle',
         source: 'kml-markers',
+        filter: ['!', ['has', 'point_count']],
         layout: { visibility: showMarkersRef.current ? 'visible' : 'none' },
         paint: {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 3, 16, 6, 18, 9],
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 14, 4, 16, 7, 18, 10],
           'circle-color': [
             'match', ['get', 'status'],
-            'available', '#00C853',
-            'reserved', '#FFD600',
-            'sold', '#FF1744',
-            '#00C853'
+            'available', '#1A8F62',
+            'reserved', '#CE9A52',
+            'sold',      '#5C6472',
+            '#1A8F62'
           ],
-          'circle-stroke-width': 1.5,
-          'circle-stroke-color': '#FFFFFF'
+          'circle-opacity': 0.80,
+          'circle-stroke-width': 1,
+          'circle-stroke-color': 'rgba(255,255,255,0.30)',
+          'circle-blur': 0.05,
         }
       });
     }
@@ -185,12 +236,12 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
 
   useEffect(() => {
     const getStyle = () => {
-      if (mapType === 'terrain') return 'mapbox://styles/mapbox/satellite-streets-v12';
-      if (mapType === 'satellite') return theme === 'dark' ? 'mapbox://styles/mapbox/satellite-v9' : 'mapbox://styles/mapbox/satellite-streets-v12';
-      return theme === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11';
+      if (mapType === 'terrain')   return `https://api.maptiler.com/maps/outdoor-v2/style.json?key=${MAPTILER_KEY}`;
+      if (mapType === 'satellite') return `https://api.maptiler.com/maps/satellite/style.json?key=${MAPTILER_KEY}`;
+      return CUSTOM_STYLE;
     };
 
-    const map = new mapboxgl.Map({
+    const map = new maplibregl.Map({
       container: mapContainerRef.current,
       style: getStyle(),
       center: [73.4613, 19.6430],
@@ -200,13 +251,13 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
       antialias: true
     });
 
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'bottom-right');
+    map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'bottom-right');
 
     map.on('load', () => {
       setupLayers(map);
 
       const updateCursor = (cursor) => map.getCanvas().style.cursor = cursor;
-      const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, offset: 10, className: 'mbpop' });
+      const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 10, className: 'mbpop' });
 
       map.on('mousemove', 'kml-markers-layer', (e) => {
         const props = e.features[0].properties;
@@ -231,6 +282,18 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
         const p = plotsRef.current.find(x => x.name === id);
         if (p) onPlotClick(p);
       });
+
+      // Cluster: click to expand
+      map.on('click', 'clusters', (e) => {
+        const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
+        const clusterId = features[0].properties.cluster_id;
+        map.getSource('kml-markers').getClusterExpansionZoom(clusterId, (err, zoom) => {
+          if (err) return;
+          map.easeTo({ center: features[0].geometry.coordinates, zoom: zoom + 0.5, duration: 600 });
+        });
+      });
+      map.on('mouseenter', 'clusters', () => updateCursor('pointer'));
+      map.on('mouseleave', 'clusters', () => updateCursor(''));
 
       mapRef.current = map;
 
@@ -266,9 +329,9 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
   useEffect(() => {
     if (!mapRef.current) return;
     const getStyle = () => {
-      if (mapType === 'terrain') return 'mapbox://styles/mapbox/satellite-streets-v12';
-      if (mapType === 'satellite') return theme === 'dark' ? 'mapbox://styles/mapbox/satellite-v9' : 'mapbox://styles/mapbox/satellite-streets-v12';
-      return theme === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11';
+      if (mapType === 'terrain')   return `https://api.maptiler.com/maps/outdoor-v2/style.json?key=${MAPTILER_KEY}`;
+      if (mapType === 'satellite') return `https://api.maptiler.com/maps/satellite/style.json?key=${MAPTILER_KEY}`;
+      return CUSTOM_STYLE;
     };
     mapRef.current.setStyle(getStyle());
   }, [theme, mapType]);
@@ -285,9 +348,10 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
   // Marker visibility toggle
   useEffect(() => {
     if (!mapRef.current || !mapRef.current.isStyleLoaded()) return;
-    if (mapRef.current.getLayer('kml-markers-layer')) {
-      mapRef.current.setLayoutProperty('kml-markers-layer', 'visibility', showMarkers ? 'visible' : 'none');
-    }
+    const vis = showMarkers ? 'visible' : 'none';
+    ['kml-markers-layer', 'clusters', 'cluster-count'].forEach(id => {
+      if (mapRef.current.getLayer(id)) mapRef.current.setLayoutProperty(id, 'visibility', vis);
+    });
   }, [showMarkers]);
 
   // Zone highlight + active plot highlight + fly-to (unified)
@@ -306,7 +370,13 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
         'case',
         ['==', ['get', 'id'], activePlot || ''], '#CE9A52',
         ['==', ['get', 'inZone'], true], activeZone.color,
-        'rgba(120,120,120,0.2)'
+        'rgba(100,100,110,0.18)'
+      ]);
+      map.setPaintProperty('kml-markers-layer', 'circle-opacity', [
+        'case',
+        ['==', ['get', 'id'], activePlot || ''], 1.0,
+        ['==', ['get', 'inZone'], true], 0.82,
+        0.22
       ]);
       map.setPaintProperty('kml-markers-layer', 'circle-radius', [
         'case',
@@ -315,10 +385,11 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
         ['interpolate', ['linear'], ['zoom'], 13, 2, 16, 3, 18, 5]
       ]);
       map.setPaintProperty('kml-markers-layer', 'circle-stroke-width', [
-        'case', ['==', ['get', 'id'], activePlot || ''], 3,
-        ['==', ['get', 'inZone'], true], 1.5,
-        0.5
+        'case', ['==', ['get', 'id'], activePlot || ''], 2.5,
+        ['==', ['get', 'inZone'], true], 1,
+        0.3
       ]);
+      map.setPaintProperty('kml-markers-layer', 'circle-stroke-color', 'rgba(255,255,255,0.28)');
 
       if (!activePlot) {
         const zonePlots = plotsRef.current.filter(p => activeZone.plotSet.has(p.name));
@@ -335,16 +406,20 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
       map.setPaintProperty('kml-markers-layer', 'circle-color', [
         'case',
         ['==', ['get', 'id'], activePlot || ''], '#CE9A52',
-        ['match', ['get', 'status'], 'available', true, false], '#00C853',
-        ['match', ['get', 'status'], 'reserved', true, false], '#FFD600',
-        '#FF1744'
+        ['match', ['get', 'status'], 'available', true, false], '#1A8F62',
+        ['match', ['get', 'status'], 'reserved', true, false], '#CE9A52',
+        '#5C6472'
+      ]);
+      map.setPaintProperty('kml-markers-layer', 'circle-opacity', [
+        'case', ['==', ['get', 'id'], activePlot || ''], 1.0, 0.80
       ]);
       map.setPaintProperty('kml-markers-layer', 'circle-radius',
-        ['interpolate', ['linear'], ['zoom'], 13, 3, 16, 6, 18, 9]
+        ['interpolate', ['linear'], ['zoom'], 14, 4, 16, 7, 18, 10]
       );
       map.setPaintProperty('kml-markers-layer', 'circle-stroke-width', [
-        'case', ['==', ['get', 'id'], activePlot || ''], 3, 1.5
+        'case', ['==', ['get', 'id'], activePlot || ''], 2.5, 1
       ]);
+      map.setPaintProperty('kml-markers-layer', 'circle-stroke-color', 'rgba(255,255,255,0.30)');
     }
 
     if (activePlot) {

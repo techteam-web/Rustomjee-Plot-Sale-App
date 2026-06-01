@@ -6,11 +6,26 @@ import PlotDetails from './components/PlotDetails';
 import MasterplanModal from './components/MasterplanModal';
 import { PLOT_INVENTORY } from './data/plotInventory';
 import { calcPrice } from './utils';
+import { ZONES } from './components/PlotFinder';
 
+const ZONE_PREFIX = { gateway: 'GW', recreation: 'RH', parks: 'GV', nature: 'FR', water: 'WE' };
+
+const _zoneCounters = {};
 const processedPlots = PLOT_INVENTORY.map((p) => {
-  const pr = calcPrice(p);
+  // Zone-based name
+  const zone = ZONES.find(z => z.test(p)) || ZONES[0];
+  _zoneCounters[zone.id] = (_zoneCounters[zone.id] || 0) + 1;
+  const name = `${ZONE_PREFIX[zone.id]}-${String(_zoneCounters[zone.id]).padStart(3, '0')}`;
+
+  // Deterministic demo status — consistent across reloads
+  const h = ((p.plotNo * 2654435761) >>> 0) % 100;
+  const status = h < 30 ? 'sold' : h < 45 ? 'reserved' : 'available';
+
+  const pr = calcPrice({ ...p, status });
   return {
     ...p,
+    name,
+    status,
     pr,
     cat: pr.premium > 1000 ? 'Imperial' : pr.premium > 850 ? 'Royal' : pr.premium > 750 ? 'Signature' : pr.premium > 500 ? 'Elite' : pr.premium > 250 ? 'Heritage' : 'Classic',
   };
@@ -21,16 +36,16 @@ function App() {
   const [activeStatus, setActiveStatus]               = useState(null);
   const [sizeRange, setSizeRange]                     = useState([1000, 10000]);
   const [sizeChip, setSizeChip]                       = useState('all');
-  const [viewMode, setViewMode]                       = useState('2D');
-  const [showMasterplan, setShowMasterplan]           = useState(false);
-  const [theme, setTheme]                             = useState('dark');
-  const [mapType, setMapType]                         = useState('standard');
-  const [masterplanOpacity]     = useState(85);
-  const [showMasterplanOverlay] = useState(true);
-  const [showMarkers]           = useState(true);
+  const [viewMode]               = useState('2D');
+  const [showMasterplan, setShowMasterplan] = useState(false);
+  const [theme, setTheme]                   = useState('dark');
+  const [mapType]                = useState('standard');
+  const [masterplanOpacity]      = useState(85);
+  const [showMasterplanOverlay]  = useState(true);
+  const [showMarkers]            = useState(true);
   const [activeZone, setActiveZone]                   = useState(null);
   const [plotElevations, setPlotElevations]           = useState({});
-  const [terrainExaggeration, setTerrainExaggeration] = useState(1.5);
+  const [terrainExaggeration]    = useState(1.5);
 
   React.useEffect(() => {
     document.body.setAttribute('data-theme', theme);
@@ -78,16 +93,10 @@ function App() {
           setSizeChip={setSizeChip}
           activePlot={activePlot}
           onPlotClick={(p) => setActivePlot(p.name)}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-          mapType={mapType}
-          setMapType={setMapType}
           activeZone={activeZone}
           onZoneSelect={setActiveZone}
           onZoneClear={() => setActiveZone(null)}
           plotElevations={plotElevations}
-          terrainExaggeration={terrainExaggeration}
-          setTerrainExaggeration={setTerrainExaggeration}
         />
 
         <Map

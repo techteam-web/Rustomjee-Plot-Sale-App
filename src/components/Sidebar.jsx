@@ -14,12 +14,6 @@ export default function Sidebar({
   setSizeChip,
   activePlot,
   onPlotClick,
-  viewMode,
-  setViewMode,
-  mapType,
-  setMapType,
-  terrainExaggeration,
-  setTerrainExaggeration,
   activeZone,
   onZoneSelect,
   onZoneClear,
@@ -44,36 +38,6 @@ export default function Sidebar({
 
   return (
     <div id="sb" ref={sidebarRef}>
-      <div className="sbs sbs-stagger">
-        <div className="sbt headline">Map View</div>
-        <div className="vtrow" style={{ marginBottom: '12px' }}>
-          <div className={`vt ${viewMode === '2D' ? 'on' : ''}`} onClick={() => setViewMode('2D')}>2D Map</div>
-          <div className={`vt ${viewMode === '3D' ? 'on' : ''}`} onClick={() => setViewMode('3D')}>3D View</div>
-        </div>
-        <div className="vtrow">
-          <div className={`vt ${mapType === 'standard' ? 'on' : ''}`} onClick={() => setMapType('standard')}>Raster</div>
-          <div className={`vt ${mapType === 'satellite' ? 'on' : ''}`} onClick={() => setMapType('satellite')}>Satellite</div>
-          <div className={`vt ${mapType === 'terrain' ? 'on' : ''}`} onClick={() => setMapType('terrain')}>Terrain</div>
-        </div>
-        {mapType === 'terrain' && (
-          <div style={{ marginTop: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <span className="sbt headline" style={{ marginBottom: 0 }}>Exaggeration</span>
-              <span style={{ fontSize: '12px', color: 'var(--brand-gold)', fontWeight: 700, fontFamily: 'Inter, sans-serif' }}>{terrainExaggeration.toFixed(1)}×</span>
-            </div>
-            <input
-              type="range" min="1.0" max="3.0" step="0.1"
-              value={terrainExaggeration}
-              onChange={e => setTerrainExaggeration(parseFloat(e.target.value))}
-              style={{ width: '100%' }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-              <span style={{ fontSize: '9px', color: 'var(--gray)', letterSpacing: '0.05em' }}>1.0×</span>
-              <span style={{ fontSize: '9px', color: 'var(--gray)', letterSpacing: '0.05em' }}>3.0×</span>
-            </div>
-          </div>
-        )}
-      </div>
 
 <div className="sbs sbs-stagger">
         <div className="sbt headline">Availability</div>
