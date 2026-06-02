@@ -7,7 +7,7 @@
 // Project location — Rustomjee Belle Vie, Kasara Hills (actual site, not the highway point).
 export const PROJECT = {
   id: 'belle-vie',
-  name: 'Rustomjee Belle Vie',
+  name: 'Rustomjee Belle Vue',
   category: 'destination',
   coords: [73.457945, 19.639584], // [lng, lat] — given as 19.639584, 73.457945 (lat, lng)
   note: 'Kasara Hills · on the Samruddhi corridor',
