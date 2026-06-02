@@ -1,11 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { responsiveMapZoom } from '../utils';
 
 // Same georeferenced corners as the live homepage map so the modal shows the
 // exact "nicely made" masterplan rendering (satellite + 3D terrain + the
-// rendered masterplan artwork + the real GeoJSON plots) instead of the old
-// white landscape sketch.
+// rendered masterplan artwork). No plot circles — just the neighbourhood map.
+// The camera matches the Home / Neighbourhood framing and is LOCKED (non-interactive).
 const MASTERPLAN_COORDS = [
   [73.45426414958871, 19.64090642755213], // NW (rotated)
   [73.4627119222577, 19.65026986516813],  // NE (rotated)
@@ -47,41 +48,19 @@ export default function MasterplanModal({ show, onClose, theme }) {
         paint: { 'raster-opacity': 0.95 },
       });
     }
-
-    // Real saleable plots from the shared GeoJSON, coloured by status
-    if (!map.getSource('mp-plots')) {
-      map.addSource('mp-plots', { type: 'geojson', data: '/data/plots.geojson' });
-    }
-    if (!map.getLayer('mp-plots-circle')) {
-      map.addLayer({
-        id: 'mp-plots-circle',
-        type: 'circle',
-        source: 'mp-plots',
-        filter: ['==', ['get', 'category'], 'saleable'],
-        paint: {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 4, 16, 8, 18, 14],
-          'circle-color': ['case',
-            ['==', ['get', 'status'], 'sold'], '#555555',
-            ['==', ['get', 'status'], 'reserved'], '#CE9A52',
-            '#FFFFFF',
-          ],
-          'circle-stroke-color': '#cccccc',
-          'circle-stroke-width': 1,
-          'circle-opacity': 0.6,
-        },
-      });
-    }
+    // No plot circles here — the masterplan shows the neighbourhood map only.
   };
 
-  // Frame the masterplan with a cinematic, pitched 3D camera. A fixed camera
-  // (bearing aligned to the artwork's long axis) fills the frame far better
-  // than fitBounds, which backs off hard under pitch and looks tiny/top-down.
+  // Frame the masterplan to match the Home / Neighbourhood "normal" view:
+  // same center + bearing, a gentle 3D tilt, and a width-responsive zoom so the
+  // estate is framed identically across screen sizes.
   const frameMasterplan = (map, animate) => {
     if (!map) return;
+    const width = mapContainerRef.current?.clientWidth || window.innerWidth;
     const camera = {
-      center: [73.46139, 19.64297], // masterplan centroid
-      zoom: 15.6,
-      pitch: 55,
+      center: [73.462444, 19.643662], // same center as the Home / Neighbourhood view
+      zoom: responsiveMapZoom(16.42, width),
+      pitch: 45,
       bearing: -42.2,
     };
     if (animate) map.flyTo({ ...camera, duration: 1400, essential: true });
@@ -93,12 +72,13 @@ export default function MasterplanModal({ show, onClose, theme }) {
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
       style: `https://api.maptiler.com/maps/hybrid/style.json?key=${key}`,
-      center: [73.46139, 19.64297],
+      center: [73.462444, 19.643662],
       zoom: 15,
-      pitch: 50,
+      pitch: 45,
       bearing: -42.2,
       maxPitch: 85,
       antialias: true,
+      interactive: false, // locked, still presentation map — no drag / zoom / rotate
     });
 
     map.on('load', () => {
@@ -126,6 +106,18 @@ export default function MasterplanModal({ show, onClose, theme }) {
         frameMasterplan(mapRef.current, true);
       }, 300);
     }
+  }, [show]);
+
+  // Keep the locked framing responsive if the window resizes while open
+  useEffect(() => {
+    if (!show) return;
+    const onResize = () => {
+      if (!mapRef.current) return;
+      mapRef.current.resize();
+      frameMasterplan(mapRef.current, false);
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, [show]);
 
   return (

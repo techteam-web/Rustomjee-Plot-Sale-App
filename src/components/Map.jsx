@@ -1,9 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { formatCurrency, getAmenitiesWithDistance } from '../utils';
+import { formatCurrency, getAmenitiesWithDistance, responsiveMapZoom } from '../utils';
 import amenitiesData from '../data/amenities.json';
 import { CONNECTIVITY, KAASA_CENTER } from '../data/connectivity';
+
+// Home framing tuned for a large (2k/4xl) screen; responsiveMapZoom() scales it
+// down on smaller viewports so the whole estate stays in view.
+const HOME_BASE_ZOOM = 16.42;
+// Plot-detail framing, also tuned for a large screen and scaled down responsively
+// so selecting a plot on a narrow map doesn't bury the camera in the ground.
+const PLOT_BASE_ZOOM = 18.2;
 
 // Initial great-circle bearing from origin to dest, degrees CW from north (0..360).
 // origin and dest are [lng, lat] in degrees. Assigned directly to MapLibre's
@@ -40,7 +47,7 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
   const idleTimeoutRef = useRef(null);
   const isAnimatingConnectivityRef = useRef(false);
   const connectivityAbortRef = useRef(null);
-  const homeCameraRef = useRef({ center: [73.462444, 19.643662], zoom: 16.42, pitch: 0, bearing: -42.2 });
+  const homeCameraRef = useRef({ center: [73.462444, 19.643662], zoom: HOME_BASE_ZOOM, pitch: 0, bearing: -42.2 });
   const [isRotating, setIsRotating] = useState(true);
 
   useEffect(() => {
@@ -257,11 +264,15 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
   };
 
   useEffect(() => {
+    // Responsive home zoom for the current map width (zooms out on smaller screens).
+    const homeZoom = responsiveMapZoom(HOME_BASE_ZOOM, mapContainerRef.current?.clientWidth || window.innerWidth);
+    homeCameraRef.current.zoom = homeZoom;
+
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
       style: getStyle(),
       center: [73.462444, 19.643662],
-      zoom: 16.42,
+      zoom: homeZoom,
       pitch: 0,
       bearing: -42.2,
       maxPitch: 85,
@@ -371,6 +382,24 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
     mapContainerRef.current?.addEventListener('mousedown', handleUserActivitySafe);
     mapContainerRef.current?.addEventListener('touchstart', handleUserActivitySafe);
     mapContainerRef.current?.addEventListener('wheel', handleUserActivitySafe);
+
+    // Keep the framing responsive: on viewport resize, re-fit the canvas and
+    // recompute the home zoom. While idle (rotating at home) snap to the new
+    // zoom so the whole estate stays framed on any screen.
+    let resizeRaf = null;
+    const handleResize = () => {
+      if (resizeRaf) cancelAnimationFrame(resizeRaf);
+      resizeRaf = requestAnimationFrame(() => {
+        map.resize();
+        const z = responsiveMapZoom(HOME_BASE_ZOOM, mapContainerRef.current?.clientWidth || window.innerWidth);
+        homeCameraRef.current.zoom = z;
+        const idle = !activePlotRef.current &&
+          (selectedConnectivityRef.current === null || selectedConnectivityRef.current === undefined) &&
+          !isAnimatingConnectivityRef.current;
+        if (idle) map.setZoom(z);
+      });
+    };
+    window.addEventListener('resize', handleResize);
 
     map.on('load', () => {
       applyMapLayers(map);
@@ -499,6 +528,8 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
       if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
       if (rotationAnimationRef.current) cancelAnimationFrame(rotationAnimationRef.current);
       window.removeEventListener('keydown', handleCameraCapture);
+      window.removeEventListener('resize', handleResize);
+      if (resizeRaf) cancelAnimationFrame(resizeRaf);
       container?.removeEventListener('mousedown', handleUserActivitySafe);
       container?.removeEventListener('touchstart', handleUserActivitySafe);
       container?.removeEventListener('wheel', handleUserActivitySafe);
@@ -531,12 +562,15 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
       if (rotationAnimationRef.current) cancelAnimationFrame(rotationAnimationRef.current);
       rotationAnimationRef.current = null;
 
-      // Find the plot and zoom to it with optimal camera positioning
+      // Find the plot and zoom to it with optimal camera positioning.
+      // Scale the zoom to the map's current width so it frames the plot the same
+      // on a narrow map as on a wide one (avoids the over-zoomed close-up on small screens).
       const selectedPlot = plots.find(p => p.name === activePlot);
       if (selectedPlot && mapRef.current) {
+        const z = responsiveMapZoom(PLOT_BASE_ZOOM, mapContainerRef.current?.clientWidth || window.innerWidth);
         mapRef.current.flyTo({
           center: selectedPlot.center,
-          zoom: 18.2,
+          zoom: z,
           duration: 1200,
           pitch: 45,
           bearing: -35,

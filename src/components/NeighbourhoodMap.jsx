@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { PROJECT, CONNECTIVITY_PLACES, TOURIST_SPOTS, TOURS, CATEGORY_META, ALL_PLACES, findPlace } from '../data/neighbourhood';
+import { responsiveMapZoom } from '../utils';
 
 // Self-contained map for the Neighbourhood view. Same base style + terrain +
 // masterplan overlay as the Home map, but instead of plots it shows the PDF's
@@ -25,6 +26,9 @@ const TOTAL_TOUR_MS = 5000; // whole play-journey completes in ~5 seconds
 const HOME_CAMERA = { center: [73.462444, 19.643662], zoom: 16.42, pitch: 0, bearing: -42.2 };
 
 const TRAVEL_PITCH = 58;   // cruising tilt while following the route (flattens to HOME's pitch on arrival)
+// The camera flies a Catmull-Rom spline through this many control points sampled along the
+// route. FEWER = smoother / more arc-like (cuts corners); MORE = hugs the road. 8 ≈ sweet spot.
+const CAM_CTRL_POINTS = 8;
 
 function geoBearing(origin, dest) {
   const toRad = (d) => (d * Math.PI) / 180;
@@ -101,30 +105,42 @@ function zoomForDistance(meters) {
   return Math.max(12.0, Math.min(13.8, 13.6 - Math.log2(km / 8)));
 }
 
-// Even-spaced resample of a route every `step` metres (keeps the exact endpoints) — a
-// prerequisite for distance-window smoothing that's independent of how OSRM sampled it.
-function resamplePath(coords, cum, step) {
+// Sample `n` points spaced evenly by distance along a route (endpoints exactly included).
+function sampleEven(coords, cum, n) {
   const total = cum[cum.length - 1];
-  if (total <= 0 || step <= 0) return coords.slice();
   const out = [];
-  for (let d = 0; d < total; d += step) out.push(pointAtDist(coords, cum, d));
-  out.push(coords[coords.length - 1]);
+  for (let i = 0; i < n; i++) out.push(pointAtDist(coords, cum, (i / (n - 1)) * total));
   return out;
 }
 
-// Moving-average smoothing over a ±`half`-sample window (endpoints fixed) — rounds off
-// sharp road corners so the camera glides through turns instead of twitching on each one.
-function movingAverage(pts, half) {
-  if (pts.length <= 2 || half < 1) return pts;
-  const out = [pts[0]];
-  for (let i = 1; i < pts.length - 1; i++) {
-    const lo = Math.max(0, i - half), hi = Math.min(pts.length - 1, i + half);
-    let sx = 0, sy = 0;
-    for (let j = lo; j <= hi; j++) { sx += pts[j][0]; sy += pts[j][1]; }
-    const n = hi - lo + 1;
-    out.push([sx / n, sy / n]);
+// Centripetal Catmull-Rom spline through the control points → one smooth, C1-continuous
+// curve that passes through every control point with NO overshoot or cusps (the centripetal
+// parameterisation is what prevents the curve from looping outside sharp turns). Reflected
+// phantom endpoints make the first/last segments well-defined. This is the camera's travel
+// path: it follows the route's macro shape but carries none of the road's local jitter.
+function catmullRom(ctrl, samplesPerSeg) {
+  const n = ctrl.length;
+  if (n < 3) return ctrl.slice();
+  const c0 = [2 * ctrl[0][0] - ctrl[1][0], 2 * ctrl[0][1] - ctrl[1][1]];
+  const cN = [2 * ctrl[n - 1][0] - ctrl[n - 2][0], 2 * ctrl[n - 1][1] - ctrl[n - 2][1]];
+  const cp = [c0, ...ctrl, cN];
+  const d = (a, b) => Math.max(1e-6, Math.sqrt(Math.hypot(b[0] - a[0], b[1] - a[1]))); // alpha = 0.5
+  const lerp = (a, b, u) => [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u];
+  const out = [];
+  for (let i = 1; i < cp.length - 2; i++) {
+    const p0 = cp[i - 1], p1 = cp[i], p2 = cp[i + 1], p3 = cp[i + 2];
+    const t0 = 0, t1 = t0 + d(p0, p1), t2 = t1 + d(p1, p2), t3 = t2 + d(p2, p3);
+    for (let s = 0; s < samplesPerSeg; s++) {
+      const t = t1 + (s / samplesPerSeg) * (t2 - t1);
+      const A1 = lerp(p0, p1, (t - t0) / (t1 - t0));
+      const A2 = lerp(p1, p2, (t - t1) / (t2 - t1));
+      const A3 = lerp(p2, p3, (t - t2) / (t3 - t2));
+      const B1 = lerp(A1, A2, (t - t0) / (t2 - t0));
+      const B2 = lerp(A2, A3, (t - t1) / (t3 - t1));
+      out.push(lerp(B1, B2, (t - t1) / (t2 - t1)));
+    }
   }
-  out.push(pts[pts.length - 1]);
+  out.push(ctrl[n - 1]); // exact final endpoint (Belle Vie)
   return out;
 }
 
@@ -154,6 +170,7 @@ export default function NeighbourhoodMap({
 }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
+  const homeZoomRef = useRef(HOME_CAMERA.zoom); // responsive home zoom (recomputed for the current map width)
 
   const themeRef = useRef(theme);
   const mapTypeRef = useRef(mapType);
@@ -199,6 +216,10 @@ export default function NeighbourhoodMap({
     flyAlongActiveRef.current = false;
     if (flyAlongRafRef.current) { cancelAnimationFrame(flyAlongRafRef.current); flyAlongRafRef.current = null; }
     if (flyAlongTimerRef.current) { clearTimeout(flyAlongTimerRef.current); flyAlongTimerRef.current = null; }
+    // Re-clamp the camera centre to the terrain. During a fly-along we unclamp it and drive our own
+    // smoothed elevation (so 3D terrain doesn't bob the camera); restore normal clamping on any exit.
+    const map = mapRef.current;
+    if (map && map.getCenterClampedToGround && !map.getCenterClampedToGround()) map.setCenterClampedToGround(true);
   };
 
   // Continuously "breathe" the route halo (width + opacity) for a Google-Maps-like
@@ -249,47 +270,54 @@ export default function NeighbourhoodMap({
     map.flyTo({ center: dest, zoom: 11, bearing, pitch: 55, duration, essential: true });
   };
 
-  // Single place selected → cinematic camera moment: drop onto the place, then fly
-  // along the real (OSRM) road route and arrive at the Belle Vie / Kasara plot.
-  // The route is requested place → project so the camera follows it in travel order.
+  // Build the camera-path data (spline + distance tables + duration) from a route line.
+  const buildCamData = (coords) => {
+    const cum = [0];
+    for (let i = 1; i < coords.length; i++) cum[i] = cum[i - 1] + haversineM(coords[i - 1], coords[i]);
+    const total = cum[cum.length - 1];
+    if (total <= 0) return null;
+    const ctrl = sampleEven(coords, cum, CAM_CTRL_POINTS);
+    // End the camera path ON the masterplan (home centre) so the camera glides to the final
+    // framing as the natural end of ONE curve — no sideways pan at arrival. The blue line
+    // still ends at the real project marker.
+    ctrl[ctrl.length - 1] = [HOME_CAMERA.center[0], HOME_CAMERA.center[1]];
+    const camPts = catmullRom(ctrl, 28);
+    const camCum = [0];
+    for (let i = 1; i < camPts.length; i++) camCum[i] = camCum[i - 1] + haversineM(camPts[i - 1], camPts[i]);
+    const camTotal = camCum[camCum.length - 1] || total;
+    const durMs = Math.min(8000, Math.max(4000, 2800 + (total / 1000) * 55)); // ~4s short → ~8s far, never rushed
+    return { coords, cum, total, camPts, camCum, camTotal, durMs, dest: coords[coords.length - 1] };
+  };
+
+  // Single place selected → ONE continuous cinematic move (entry → travel → arrival) run as
+  // a single rAF, with NO separate flyTo — so there is never a hand-off snap. See flyAlongRoute.
   const drawSingleRoute = (map, dest) => {
     if (routeAbortRef.current) { routeAbortRef.current.abort(); routeAbortRef.current = null; }
     cancelTour();
     cancelFlyAlong();
     const project = PROJECT.coords;
 
-    // Place co-located with the project (e.g. the Samruddhi connection point) → just
-    // settle on the site; there is no route to travel.
+    // Place co-located with the project (e.g. the Samruddhi connection point) → just settle.
     if (project[0] === dest[0] && project[1] === dest[1]) {
       setRoute(map, null);
-      map.easeTo({ ...HOME_CAMERA, duration: 1200, essential: true });
+      map.easeTo({ ...HOME_CAMERA, zoom: homeZoomRef.current, duration: 1200, essential: true });
       return;
     }
 
-    setRoute(map, null);          // clear any prior path so the new one traces from scratch
-    flyAlongActiveRef.current = true; // claim the camera for this fly-along
+    setRoute(map, null);
+    flyAlongActiveRef.current = true;
 
-    // Entry: ease the camera onto the place, facing Belle Vie, AT THE CRUISE HEIGHT — so
-    // once the start is shown the camera moves straight forward without rising or dipping.
     const entryBearing = geoBearing(dest, project);
-    const cruiseZoom = zoomForDistance(haversineM(dest, project) * 1.3); // ~road-distance estimate → height
-    map.flyTo({ center: dest, zoom: cruiseZoom, bearing: entryBearing, pitch: TRAVEL_PITCH, duration: 1500, curve: 1.4, easing: (t) => t * (2 - t), essential: true });
+    const cruiseZoom = zoomForDistance(haversineM(dest, project) * 1.3);
+    // Snapshot the camera's CURRENT state — the entry animates out of exactly this, in-loop.
+    // Capture the centre elevation while it's still terrain-clamped, then UNCLAMP so the loop can
+    // drive its own smoothed elevation each frame: the 3D terrain stays at full exaggeration but no
+    // longer bobs the camera over the ghats (we follow a low-passed ground height instead). See flyAlongRoute.
+    const from = { c: map.getCenter().toArray(), z: map.getZoom(), b: map.getBearing(), pi: map.getPitch(), el: map.getCenterElevation() };
+    map.setCenterClampedToGround(false);
 
-    // Start the traversal once BOTH the entry move has settled and the route has
-    // arrived — whichever finishes last triggers it, exactly once (`started` guard).
-    // The entry bearing + cruise zoom are threaded through so the fly-along begins
-    // perfectly continuous — no bearing or height jump at the hand-off.
-    let coordsReady = null;
-    let entryDone = false;
-    let started = false;
-    const startIfReady = () => {
-      if (started || !flyAlongActiveRef.current || !entryDone || !coordsReady) return;
-      started = true;
-      flyAlongRoute(map, coordsReady, entryBearing, cruiseZoom);
-    };
-    // Gate just past the 1500ms entry flyTo so it has fully settled before we hand off.
-    flyAlongTimerRef.current = setTimeout(() => { entryDone = true; startIfReady(); }, 1600);
-
+    // Fetch the route; build the camera-path data when it lands (the entry plays meanwhile).
+    let camData = null;
     const controller = new AbortController();
     routeAbortRef.current = controller;
     const url = `https://router.project-osrm.org/route/v1/driving/${dest[0]},${dest[1]};${project[0]},${project[1]}?overview=full&geometries=geojson`;
@@ -298,104 +326,102 @@ export default function NeighbourhoodMap({
       .then((data) => {
         if (controller.signal.aborted) return;
         let line = data.routes && data.routes[0] && data.routes[0].geometry && data.routes[0].geometry.coordinates;
-        if (!line || line.length < 2) line = [dest, project]; // straight-line fallback if OSRM returns no usable route
-        // OSRM snaps the endpoints to the nearest road; stitch the exact place + project
-        // back on so the drawn line spans marker → marker with no gap before Belle Vie.
-        if (haversineM(line[0], dest) > 2) line = [dest, ...line];
-        if (haversineM(line[line.length - 1], project) > 2) line = [...line, project];
-        coordsReady = line;
-        startIfReady();
+        if (!line || line.length < 2) line = [dest, project];
+        if (haversineM(line[0], dest) > 2) line = [dest, ...line];                    // stitch exact place
+        if (haversineM(line[line.length - 1], project) > 2) line = [...line, project]; // stitch exact project
+        camData = buildCamData(line);
       })
       .catch((err) => {
         if (err.name === 'AbortError') return;
-        coordsReady = [dest, project]; // straight-line fallback
-        startIfReady();
+        camData = buildCamData([dest, project]);
       });
+
+    flyAlongRoute(map, dest, from, entryBearing, cruiseZoom, () => camData);
   };
 
-  // Animate the camera along an ordered route (coords[0] = place, last = project),
-  // tracing the gold path behind it, then settle on the Belle Vie site on arrival.
-  // `startBearing` is the entry bearing, so the first frame is bearing-continuous.
-  const flyAlongRoute = (map, coords, startBearing, cruiseZoom) => {
+  // The whole cinematic move as ONE rAF loop: entry (fly from `from` onto the place) →
+  // travel (follow the spline) → arrival (settle on the plot). Every frame is one jumpTo we
+  // control, so the entry ends EXACTLY at the travel's first frame and the travel ends
+  // EXACTLY at the home framing — no hand-off between camera systems anywhere, hence no snap.
+  const flyAlongRoute = (map, dest, from, entryBearing, cruiseZoom, getCamData) => {
     if (!flyAlongActiveRef.current) return;
-    if (!coords || coords.length < 2) { setRoute(map, coords); flyAlongActiveRef.current = false; return; }
-
-    // Cumulative metres along the real route → drives the blue line reveal at constant speed.
-    const cum = [0];
-    for (let i = 1; i < coords.length; i++) cum[i] = cum[i - 1] + haversineM(coords[i - 1], coords[i]);
-    const total = cum[cum.length - 1];
-    if (total <= 0) { setRoute(map, coords); flyAlongActiveRef.current = false; return; }
-
-    // Separate, SMOOTHED path just for the camera: resample evenly, then average over a
-    // distance window so sharp corners are rounded off. The camera follows this glassy
-    // path (no twitch) while the drawn blue line still traces the real road exactly.
-    const step = Math.max(40, total / 400);
-    const camPts = movingAverage(resamplePath(coords, cum, step), 6);
-    const camCum = [0];
-    for (let i = 1; i < camPts.length; i++) camCum[i] = camCum[i - 1] + haversineM(camPts[i - 1], camPts[i]);
-    const camTotal = camCum[camCum.length - 1] || total;
-
-    const dest = coords[coords.length - 1]; // destination (Belle Vie) — the camera faces this the whole way
-    const km = total / 1000;
-    const durMs = Math.min(8000, Math.max(4000, 2800 + km * 55)); // ~4s short hops → ~8s for the far city runs, never rushed
-    const revealStep = total / 240;                            // throttle line redraws during the (zoomed-out) cruise
-    const TURN_TAU = 600;                                      // heading low-pass (ms) — mostly smooths the launch transient now
-    let smoothBearing = startBearing;                          // low-pass-filtered heading, seeded from the entry bearing
-    let lastReveal = -Infinity;
-    let startTs = null;
-    let prevTs = null;
-    // Slow-fast-slow distance profile: gentle launch from the place, gentle arrival at the plot.
+    const ENTRY_MS = 1600;
+    const ARRIVE = 0.6, TURN_TAU = 600, ELEV_TAU = 600;
     const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+    // Zoom-out arc depth for the fly-in: farther entries pull out more so they don't blur past.
+    const entryDip = Math.min(5, Math.max(0, Math.log2(Math.max(1, haversineM(from.c, dest) / 2000))));
 
-    const frame = (ts) => {
+    let phase = 'entry';
+    let entryStart = null, travelStart = null, prevTs = null, lastReveal = -Infinity;
+    let cruiseHeading = entryBearing;
+    // Smoothed centre-elevation (metres ASL, on the exaggerated scale — same as queryTerrainElevation).
+    // Seeded at the camera's current clamped height so frame 1 doesn't jump; each frame it eases toward
+    // the terrain under the camera, so we glide over bumps (no bob) while the terrain stays fully 3D.
+    // Held at its last value when a DEM tile isn't loaded yet (far routes), so it can never snap.
+    let elevCtrl = from.el;
+
+    const loop = (ts) => {
       if (!flyAlongActiveRef.current) return;
-      if (startTs === null) startTs = ts;
       const dt = prevTs === null ? 16 : Math.min(64, ts - prevTs); // clamp so a dropped frame can't snap the camera
       prevTs = ts;
-      const t = Math.min(1, (ts - startTs) / durMs);
+
+      if (phase === 'entry') {
+        if (entryStart === null) entryStart = ts;
+        const e = smoothstep(0, ENTRY_MS, ts - entryStart); // gentle (peak 1.5×) so the fly-in tilt/rotate isn't aggressive
+        // From the camera's real state → (place, cruiseZoom, entryBearing, TRAVEL_PITCH), with
+        // a gentle zoom-out arc. Ends EXACTLY where travel begins, so the transition is seamless.
+        const center = [from.c[0] + (dest[0] - from.c[0]) * e, from.c[1] + (dest[1] - from.c[1]) * e];
+        const zoom = (from.z + (cruiseZoom - from.z) * e) - entryDip * Math.sin(Math.PI * e);
+        const bearing = lerpAngle(from.b, entryBearing, e);
+        const pitch = from.pi + (TRAVEL_PITCH - from.pi) * e;
+        const rawE = map.queryTerrainElevation(center);
+        if (rawE != null) elevCtrl += (rawE - elevCtrl) * (1 - Math.exp(-dt / ELEV_TAU));
+        map.jumpTo({ center, zoom, bearing, pitch, elevation: elevCtrl });
+        if (e >= 1 && getCamData()) phase = 'travel'; // wait for BOTH: entry finished AND route ready
+        flyAlongRafRef.current = requestAnimationFrame(loop);
+        return;
+      }
+
+      // ---- travel + arrival ----
+      if (travelStart === null) travelStart = ts;
+      const { coords, cum, total, camPts, camCum, camTotal, durMs, dest: routeDest } = getCamData();
+      const t = Math.min(1, (ts - travelStart) / durMs);
       const p = easeInOut(t);
+      const pos = pointAtDist(camPts, camCum, p * camTotal);
 
-      // Position comes from the SMOOTHED path (no translational zigzag through switchbacks).
-      const camAlong = p * camTotal;
-      const pos = pointAtDist(camPts, camCum, camAlong);
+      // Heading faces the destination during the cruise (no per-curve twitch), then the arrival
+      // blend `a` settles it onto the home bearing. CRUCIAL fix for the intermittent end-jerk:
+      // FULLY freeze the destination-chase early in the arrival (chaseFade → 0 by ARRIVE+0.18),
+      // *before* the camera passes near the project where geoBearing(pos, project) swings wildly.
+      // So the heading never tracks that swing — it just rotates cleanly to home. The fade is
+      // smoothstepped (C1, no hitch) and the final bearing is exactly home at a = 1.
+      const a = smoothstep(ARRIVE, 1.0, t);
+      const chaseFade = 1 - smoothstep(ARRIVE, ARRIVE + 0.18, t);
+      cruiseHeading = lerpAngle(cruiseHeading, geoBearing(pos, routeDest), (1 - Math.exp(-dt / TURN_TAU)) * chaseFade);
+      const bearing = lerpAngle(cruiseHeading, HOME_CAMERA.bearing, a);
+      const zoom = cruiseZoom + (homeZoomRef.current - cruiseZoom) * a;
+      const pitch = TRAVEL_PITCH + (HOME_CAMERA.pitch - TRAVEL_PITCH) * a;
+      const rawE = map.queryTerrainElevation(pos);
+      if (rawE != null) elevCtrl += (rawE - elevCtrl) * (1 - Math.exp(-dt / ELEV_TAU));
+      map.jumpTo({ center: pos, bearing, pitch, zoom, elevation: elevCtrl });
 
-      // Heading faces the DESTINATION, not the road's local tangent — the key anti-twitch
-      // move. The angle from a moving point to a fixed target changes only slowly and
-      // monotonically, so winding / switchback-heavy roads no longer swing the camera
-      // left and right at all. (Hold the heading once we're basically on top of it.)
-      const target = haversineM(pos, dest) < 150 ? smoothBearing : geoBearing(pos, dest);
-      smoothBearing = lerpAngle(smoothBearing, target, 1 - Math.exp(-dt / TURN_TAU));
-
-      // Height holds at the cruise zoom (set at entry) the whole way — NO rise after the
-      // start — and only zooms IN onto the plot at the very end. Pitch flattens on that descent.
-      const zIn = smoothstep(0.62, 1.0, t);
-      const zoom = cruiseZoom + (HOME_CAMERA.zoom - cruiseZoom) * zIn;
-      const pitch = TRAVEL_PITCH + (HOME_CAMERA.pitch - TRAVEL_PITCH) * zIn;
-      const bearing = lerpAngle(smoothBearing, HOME_CAMERA.bearing, smoothstep(0.72, 1.0, t));
-      // Ease onto the masterplan centre only in the final moments.
-      const c = smoothstep(0.85, 1.0, t);
-      const center = [pos[0] + (HOME_CAMERA.center[0] - pos[0]) * c, pos[1] + (HOME_CAMERA.center[1] - pos[1]) * c];
-
-      map.jumpTo({ center, bearing, pitch, zoom });
-
-      // Reveal the real route line up to the same journey fraction. During the zoomed-in
-      // descent (t > 0.6) redraw EVERY frame so the line reaches Belle Vie smoothly with no
-      // gap; during the zoomed-out cruise the coarse throttle is invisible and cheaper.
+      // Reveal the real route line up to the same journey fraction (every frame on the
+      // zoomed-in descent so it reaches Belle Vie with no gap).
       const along = p * total;
-      if (along - lastReveal >= revealStep || t > 0.6) {
+      if (along - lastReveal >= total / 240 || t > 0.6) {
         setRoute(map, sliceToDist(coords, cum, along));
         lastReveal = along;
       }
       if (t < 1) {
-        flyAlongRafRef.current = requestAnimationFrame(frame);
+        flyAlongRafRef.current = requestAnimationFrame(loop);
       } else {
-        // The final frame already rests at HOME_CAMERA — just settle cleanly (no extra move).
         flyAlongActiveRef.current = false;
         flyAlongRafRef.current = null;
         setRoute(map, coords); // full path stays drawn after arrival
+        map.setCenterClampedToGround(true); // re-clamp centre to terrain (top-down at pitch 0 → invisible)
       }
     };
-    flyAlongRafRef.current = requestAnimationFrame(frame);
+    flyAlongRafRef.current = requestAnimationFrame(loop);
   };
 
   // Play a ~5s cinematic tour through a group of places (project → each).
@@ -490,11 +516,13 @@ export default function NeighbourhoodMap({
 
   // Init map once
   useEffect(() => {
+    // Responsive home zoom for the current map width (zooms out on smaller screens).
+    homeZoomRef.current = responsiveMapZoom(HOME_CAMERA.zoom, mapContainerRef.current?.clientWidth || window.innerWidth);
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
       style: getStyle(),
       center: HOME_CAMERA.center,
-      zoom: HOME_CAMERA.zoom,
+      zoom: homeZoomRef.current,
       pitch: HOME_CAMERA.pitch,
       bearing: HOME_CAMERA.bearing,
       maxPitch: 85,
@@ -543,10 +571,27 @@ export default function NeighbourhoodMap({
       applyLayers(mapRef.current);
     });
 
+    // Responsive: re-fit the canvas and recompute home zoom on viewport resize;
+    // when idle (settled at home) ease to the new zoom so the site stays framed.
+    let resizeRaf = null;
+    const handleResize = () => {
+      if (resizeRaf) cancelAnimationFrame(resizeRaf);
+      resizeRaf = requestAnimationFrame(() => {
+        if (!mapRef.current) return;
+        mapRef.current.resize();
+        homeZoomRef.current = responsiveMapZoom(HOME_CAMERA.zoom, mapContainerRef.current?.clientWidth || window.innerWidth);
+        const idle = !selectedPlaceRef.current && !tourRunningRef.current && !flyAlongActiveRef.current && !pendingPlayRef.current;
+        if (idle) mapRef.current.easeTo({ zoom: homeZoomRef.current, duration: 350 });
+      });
+    };
+    window.addEventListener('resize', handleResize);
+
     return () => {
       cancelTour();
       cancelFlyAlong();
       stopPulse();
+      window.removeEventListener('resize', handleResize);
+      if (resizeRaf) cancelAnimationFrame(resizeRaf);
       if (routeAbortRef.current) { routeAbortRef.current.abort(); routeAbortRef.current = null; }
       if (onTourEndRef.current) onTourEndRef.current(); // reset play state on leave
       map.remove();
@@ -585,9 +630,9 @@ export default function NeighbourhoodMap({
     } else if (!playing && !tourRunningRef.current) {
       // User deselected (not a tour starting) → stop any fly-along, clear path + ease home
       if (routeAbortRef.current) { routeAbortRef.current.abort(); routeAbortRef.current = null; }
-      cancelFlyAlong();
+      cancelFlyAlong(); // also re-clamps the centre to terrain if the journey was interrupted mid-flight
       setRoute(map, null);
-      map.easeTo({ ...HOME_CAMERA, duration: 1200 });
+      map.easeTo({ ...HOME_CAMERA, zoom: homeZoomRef.current, duration: 1200 });
     }
   }, [selectedPlace]);
 
