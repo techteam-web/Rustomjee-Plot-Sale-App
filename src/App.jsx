@@ -1,79 +1,136 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Map from './components/Map';
 import PlotDetails from './components/PlotDetails';
 import MasterplanModal from './components/MasterplanModal';
-import { PLOT_INVENTORY } from './data/plotInventory';
+import NeighbourhoodPanel from './components/NeighbourhoodPanel';
+import NeighbourhoodMap from './components/NeighbourhoodMap';
+import { STATUS_LIST, SOLD_NAMES, AMEN } from './data/plots';
 import { calcPrice } from './utils';
-import { ZONES } from './components/PlotFinder';
-
-const ZONE_PREFIX = { gateway: 'GW', recreation: 'RH', parks: 'GV', nature: 'FR', water: 'WE' };
-
-const _zoneCounters = {};
-const processedPlots = PLOT_INVENTORY.map((p) => {
-  // Zone-based name
-  const zone = ZONES.find(z => z.test(p)) || ZONES[0];
-  _zoneCounters[zone.id] = (_zoneCounters[zone.id] || 0) + 1;
-  const name = `${ZONE_PREFIX[zone.id]}-${String(_zoneCounters[zone.id]).padStart(3, '0')}`;
-
-  // Deterministic demo status — consistent across reloads
-  const h = ((p.plotNo * 2654435761) >>> 0) % 100;
-  const status = h < 30 ? 'sold' : h < 45 ? 'reserved' : 'available';
-
-  const pr = calcPrice({ ...p, status });
-  return {
-    ...p,
-    name,
-    status,
-    pr,
-    cat: pr.premium > 1000 ? 'Imperial' : pr.premium > 850 ? 'Royal' : pr.premium > 750 ? 'Signature' : pr.premium > 500 ? 'Elite' : pr.premium > 250 ? 'Heritage' : 'Classic',
-  };
-});
 
 function App() {
-  const [activePlot, setActivePlot]                   = useState(null);
-  const [activeStatus, setActiveStatus]               = useState(null);
-  const [sizeRange, setSizeRange]                     = useState([1000, 10000]);
-  const [sizeChip, setSizeChip]                       = useState('all');
-  const [viewMode]               = useState('2D');
+  const [page, setPage] = useState('home');
+  const [processedPlots, setProcessedPlots] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activePlot, setActivePlot] = useState(null);
+  const [activeStatus, setActiveStatus] = useState('available');
+  const [sizeRange, setSizeRange] = useState([2000, 12000]);
+  const [sizeChip, setSizeChip] = useState('all');
+  const [viewMode, setViewMode] = useState('3D');
   const [showMasterplan, setShowMasterplan] = useState(false);
-  const [theme, setTheme]                   = useState('dark');
-  const [mapType]                = useState('standard');
-  const [masterplanOpacity]      = useState(85);
-  const [showMasterplanOverlay]  = useState(true);
-  const [showMarkers]            = useState(true);
-  const [activeZone, setActiveZone]                   = useState(null);
-  const [plotElevations, setPlotElevations]           = useState({});
-  const [terrainExaggeration]    = useState(1.5);
+  const [theme, setTheme] = useState('dark');
+  const [mapType, setMapType] = useState('satellite');
+  const [selectedConnectivity, setSelectedConnectivity] = useState(null);
+  const [activeZone, setActiveZone] = useState(null);
+  const [plotElevations, setPlotElevations] = useState({});
 
-  React.useEffect(() => {
+  // Neighbourhood (explore) view state
+  const [selectedPlace, setSelectedPlace] = useState(null);
+  const [activeTour, setActiveTour] = useState(null);
+  const [tourPlayToken, setTourPlayToken] = useState(0);
+  const [tourStep, setTourStep] = useState(null);
+  const [playing, setPlaying] = useState(false);
+
+  // Load GeoJSON plots + amenities
+  useEffect(() => {
+    Promise.all([
+      fetch('/data/amenities.json').then(r => r.json()),
+      fetch('/data/plots.geojson').then(r => r.json()),
+    ]).then(([amenData, fc]) => {
+      const AMEN_REAL = {
+        club: amenData.club,
+        park1: amenData.park1,
+        park2: amenData.park2,
+        water: amenData.water,
+      };
+
+      const plots = fc.features
+        .filter(f => f.properties.category === 'saleable')
+        .map(f => {
+          const p = f.properties;
+          const center = f.geometry.coordinates;
+          const pr = calcPrice({ center, area_sqft: p.areaSqft }, AMEN_REAL);
+          const statusIdx = p.plotNo % STATUS_LIST.length;
+          return {
+            ...p,
+            name: `Plot ${p.plotNo}`,
+            center,
+            latitude: center[1],
+            longitude: center[0],
+            area_sqft: p.areaSqft,
+            area_sqm: p.areaSqm,
+            status: STATUS_LIST[statusIdx],
+            soldTo: STATUS_LIST[statusIdx] === 'sold' ? SOLD_NAMES[p.plotNo % SOLD_NAMES.length] : null,
+            pr,
+            cat: pr.premium > 1000 ? 'Imperial' : pr.premium > 850 ? 'Royal'
+               : pr.premium > 750 ? 'Signature' : pr.premium > 500 ? 'Elite'
+               : pr.premium > 250 ? 'Heritage' : 'Classic',
+          };
+        });
+      setProcessedPlots(plots);
+      setLoading(false);
+    }).catch(err => {
+      console.error('Failed to load plots:', err);
+      setLoading(false);
+    });
+  }, []);
+
+  useEffect(() => {
     document.body.setAttribute('data-theme', theme);
   }, [theme]);
 
   const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
+  // Plot and connectivity views are mutually exclusive — selecting one clears the other
+  // so their camera animations never fight and no stale highlight lingers.
+  const handleSelectPlot = (name) => {
+    setActivePlot(name);
+    if (name !== null) setSelectedConnectivity(null);
+  };
+
+  const handleSelectConnectivity = (idx) => {
+    setSelectedConnectivity(idx);
+    if (idx !== null && idx !== undefined) setActivePlot(null);
+  };
+
+  // Neighbourhood handlers
+  const handlePlayTour = (groupId) => {
+    setActiveTour(groupId);
+    setSelectedPlace(null);
+    setTourStep(0);
+    setPlaying(true);
+    setTourPlayToken((t) => t + 1);
+  };
+  const handleStopTour = () => {
+    setPlaying(false);
+  };
+  const handleSelectPlace = (id) => {
+    setSelectedPlace(id);
+    if (id !== null) setPlaying(false);
+  };
+
   const filteredPlots = useMemo(() => {
-    let fp = activeZone
-      ? processedPlots.filter(p => activeZone.plotSet.has(p.name))
-      : [...processedPlots];
+    let fp = [...processedPlots];
     if (activeStatus) fp = fp.filter(p => p.status === activeStatus);
     fp = fp.filter(p => p.area_sqft >= sizeRange[0] && p.area_sqft <= sizeRange[1]);
-    if (sizeChip === 's') fp = fp.filter(p => p.area_sqft < 3000);
-    if (sizeChip === 'm') fp = fp.filter(p => p.area_sqft >= 3000 && p.area_sqft <= 6000);
-    if (sizeChip === 'l') fp = fp.filter(p => p.area_sqft > 6000);
+    if (sizeChip === 's') fp = fp.filter(p => p.area_sqft < 3500);
+    if (sizeChip === 'm') fp = fp.filter(p => p.area_sqft >= 3500 && p.area_sqft <= 5000);
+    if (sizeChip === 'l') fp = fp.filter(p => p.area_sqft > 5000);
     return fp;
-  }, [activeStatus, sizeRange, sizeChip, activeZone]);
+  }, [processedPlots, activeStatus, sizeRange, sizeChip]);
 
   const selectedPlotData = useMemo(() => {
     return processedPlots.find(p => p.name === activePlot) || null;
-  }, [activePlot]);
+  }, [processedPlots, activePlot]);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <Header
         theme={theme}
         onToggleTheme={toggleTheme}
+        page={page}
+        setPage={setPage}
         onShowMasterplan={() => setShowMasterplan(true)}
         onOpenROI={() => {
           if (!activePlot) alert('Please select a plot first to open the ROI calculator.');
@@ -81,49 +138,81 @@ function App() {
         }}
       />
 
-      <div id="app" className="flex flex-1 pt-14">
-        <Sidebar
-          plots={processedPlots}
-          filteredPlots={filteredPlots}
-          activeStatus={activeStatus}
-          setActiveStatus={setActiveStatus}
-          sizeRange={sizeRange}
-          setSizeRange={setSizeRange}
-          sizeChip={sizeChip}
-          setSizeChip={setSizeChip}
-          activePlot={activePlot}
-          onPlotClick={(p) => setActivePlot(p.name)}
-          activeZone={activeZone}
-          onZoneSelect={setActiveZone}
-          onZoneClear={() => setActiveZone(null)}
-          plotElevations={plotElevations}
-        />
+      {loading ? (
+        <div style={{flex:1, display:'flex', alignItems:'center', justifyContent:'center'}}>
+          <div className="headline" style={{color:'var(--brand-gold)'}}>Loading plots…</div>
+        </div>
+      ) : page === 'explore' ? (
+        <div id="app" className="flex flex-1 pt-14">
+          <NeighbourhoodPanel
+            activeTour={activeTour}
+            onPlayTour={handlePlayTour}
+            onStopTour={handleStopTour}
+            playing={playing}
+            tourStep={tourStep}
+            selectedPlace={selectedPlace}
+            onSelectPlace={handleSelectPlace}
+          />
+          <NeighbourhoodMap
+            theme={theme}
+            mapType={mapType}
+            selectedPlace={selectedPlace}
+            tour={activeTour}
+            tourPlayToken={tourPlayToken}
+            playing={playing}
+            onTourStep={setTourStep}
+            onTourEnd={handleStopTour}
+            onSelectPlace={handleSelectPlace}
+          />
+        </div>
+      ) : (
+        <div id="app" className="flex flex-1 pt-14">
+          <Sidebar
+            plots={processedPlots}
+            filteredPlots={filteredPlots}
+            activeStatus={activeStatus}
+            setActiveStatus={setActiveStatus}
+            sizeRange={sizeRange}
+            setSizeRange={setSizeRange}
+            sizeChip={sizeChip}
+            setSizeChip={setSizeChip}
+            activePlot={activePlot}
+            onPlotClick={(p) => handleSelectPlot(p ? p.name : null)}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            mapType={mapType}
+            setMapType={setMapType}
+            theme={theme}
+            selectedConnectivity={selectedConnectivity}
+            setSelectedConnectivity={handleSelectConnectivity}
+            activeZone={activeZone}
+            onZoneSelect={setActiveZone}
+            onZoneClear={() => setActiveZone(null)}
+            plotElevations={plotElevations}
+          />
 
-        <Map
-          plots={processedPlots}
-          activePlot={activePlot}
-          onPlotClick={(p) => setActivePlot(p.name)}
-          viewMode={viewMode}
-          mapType={mapType}
-          theme={theme}
-          masterplanOpacity={masterplanOpacity}
-          showMasterplanOverlay={showMasterplanOverlay}
-          showMarkers={showMarkers}
-          activeZone={activeZone}
-          onElevationsLoaded={setPlotElevations}
-          terrainExaggeration={terrainExaggeration}
-        />
+          <Map
+            plots={processedPlots}
+            activePlot={activePlot}
+            onPlotClick={(p) => handleSelectPlot(p ? p.name : null)}
+            viewMode={viewMode}
+            mapType={mapType}
+            theme={theme}
+            selectedConnectivity={selectedConnectivity}
+            activeZone={activeZone}
+          />
 
-        <PlotDetails
-          plot={selectedPlotData}
-          onClose={() => setActivePlot(null)}
-          theme={theme}
-        />
-      </div>
+          <PlotDetails
+            plot={selectedPlotData}
+            onClose={() => setActivePlot(null)}
+            theme={theme}
+          />
+        </div>
+      )}
 
       <MasterplanModal
-        show={showMasterplan}
-        onClose={() => setShowMasterplan(false)}
+        show={showMasterplan} 
+        onClose={() => setShowMasterplan(false)} 
         theme={theme}
       />
 

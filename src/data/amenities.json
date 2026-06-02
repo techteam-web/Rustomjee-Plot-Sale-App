@@ -1,0 +1,184 @@
+[
+  {
+    "id": "site-office",
+    "name": "Site Office",
+    "latitude": 19.63922763428272,
+    "longitude": 73.457757578545,
+    "category": "office"
+  },
+  {
+    "id": "amenity-2",
+    "name": "Community Garden",
+    "latitude": 19.63967518460811,
+    "longitude": 73.45800456588971,
+    "category": "garden"
+  },
+  {
+    "id": "amenity-3",
+    "name": "Open Green Space",
+    "latitude": 19.64065200986612,
+    "longitude": 73.4604721936749,
+    "category": "park"
+  },
+  {
+    "id": "amenity-4",
+    "name": "Playground",
+    "latitude": 19.64099331929861,
+    "longitude": 73.46095023248797,
+    "category": "recreation"
+  },
+  {
+    "id": "amenity-5",
+    "name": "Jogging Track",
+    "latitude": 19.64116167891737,
+    "longitude": 73.46156461657233,
+    "category": "recreation"
+  },
+  {
+    "id": "amenity-5b",
+    "name": "Sitting Area",
+    "latitude": 19.64066370169008,
+    "longitude": 73.46112310146357,
+    "category": "recreation"
+  },
+  {
+    "id": "amenity-6",
+    "name": "Water Feature",
+    "latitude": 19.64275129054257,
+    "longitude": 73.46594407579917,
+    "category": "feature"
+  },
+  {
+    "id": "amenity-7",
+    "name": "Clubhouse",
+    "latitude": 19.64204267517904,
+    "longitude": 73.46536960713981,
+    "category": "clubhouse"
+  },
+  {
+    "id": "amenity-8",
+    "name": "Swimming Pool",
+    "latitude": 19.64364210689407,
+    "longitude": 73.46535610238065,
+    "category": "recreational"
+  },
+  {
+    "id": "amenity-9",
+    "name": "Fitness Center",
+    "latitude": 19.64289726342093,
+    "longitude": 73.46479580865052,
+    "category": "recreational"
+  },
+  {
+    "id": "amenity-10",
+    "name": "Tennis Court",
+    "latitude": 19.64369403724107,
+    "longitude": 73.46404553202515,
+    "category": "sports"
+  },
+  {
+    "id": "amenity-11",
+    "name": "Basketball Court",
+    "latitude": 19.64410413220285,
+    "longitude": 73.4650056538101,
+    "category": "sports"
+  },
+  {
+    "id": "amenity-12",
+    "name": "Multi-Purpose Court",
+    "latitude": 19.64466518420804,
+    "longitude": 73.46590135512716,
+    "category": "sports"
+  },
+  {
+    "id": "amenity-13",
+    "name": "Children's Play Area",
+    "latitude": 19.64312317843765,
+    "longitude": 73.46391153531209,
+    "category": "recreation"
+  },
+  {
+    "id": "amenity-14",
+    "name": "Landscaped Garden",
+    "latitude": 19.64273869105614,
+    "longitude": 73.46314752120263,
+    "category": "garden"
+  },
+  {
+    "id": "amenity-15",
+    "name": "Park Area",
+    "latitude": 19.64230423502336,
+    "longitude": 73.4581122741797,
+    "category": "park"
+  },
+  {
+    "id": "amenity-16",
+    "name": "Walking Path",
+    "latitude": 19.6430161374447,
+    "longitude": 73.45943059241159,
+    "category": "recreation"
+  },
+  {
+    "id": "amenity-17",
+    "name": "Community Hall",
+    "latitude": 19.64339089431082,
+    "longitude": 73.46126142225964,
+    "category": "clubhouse"
+  },
+  {
+    "id": "amenity-18",
+    "name": "Yoga & Wellness Center",
+    "latitude": 19.64264537157646,
+    "longitude": 73.46172138548307,
+    "category": "wellness"
+  },
+  {
+    "id": "amenity-19",
+    "name": "Amphitheater",
+    "latitude": 19.64365379701388,
+    "longitude": 73.46269265367116,
+    "category": "recreation"
+  },
+  {
+    "id": "amenity-20",
+    "name": "Lounge Area",
+    "latitude": 19.64314110147381,
+    "longitude": 73.46145505599587,
+    "category": "recreation"
+  },
+  {
+    "id": "amenity-21",
+    "name": "Library",
+    "latitude": 19.64515004250252,
+    "longitude": 73.4598567553119,
+    "category": "community"
+  },
+  {
+    "id": "amenity-22",
+    "name": "Study Space",
+    "latitude": 19.6450130274227,
+    "longitude": 73.45864958352369,
+    "category": "community"
+  },
+  {
+    "id": "amenity-23",
+    "name": "Outdoor Theater",
+    "latitude": 19.64557151851576,
+    "longitude": 73.45981611265637,
+    "category": "recreation"
+  },
+  {
+    "id": "amenity-24",
+    "name": "Meditation Garden",
+    "latitude": 19.64510215497888,
+    "longitude": 73.45932112456109,
+    "category": "garden"
+  },
+  {
+    "id": "amenity-25",
+    "name": "Security Gate",
+    "latitude": 19.64585915994819,
+    "longitude": 73.46005849719784,
+    "category": "security"
+  }
+]

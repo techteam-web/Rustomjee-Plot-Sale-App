@@ -1,4 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
+@import "tailwindcss";
+
+/* Custom breakpoints (Tailwind v4). Extends the defaults (sm 640 · md 768 ·
+   lg 1024 · xl 1280 · 2xl 1536) so you can use 3xl:/4xl:/5xl: utility prefixes.
+   The map camera zoom is handled separately in JS (responsiveMapZoom) because
+   MapLibre zoom is a continuous geographic scale, not a CSS breakpoint. */
+@theme {
+  --breakpoint-3xl: 120rem; /* 1920px */
+  --breakpoint-4xl: 160rem; /* 2560px */
+  --breakpoint-5xl: 240rem; /* 3200px */
+}
 
 :root {
   /* Brand Primary Colors (Consistent across themes) */
@@ -100,7 +111,7 @@ h1, h2, h3, .headline {
   background: var(--gold);
 }
 
-.maplibregl-popup-content {
+.mapboxgl-popup-content {
   background: var(--glass-bg) !important;
   border: 1px solid var(--brand-gold) !important;
   backdrop-filter: blur(10px);
@@ -109,7 +120,7 @@ h1, h2, h3, .headline {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4) !important;
 }
 
-.maplibregl-popup-tip {
+.mapboxgl-popup-tip {
   border-top-color: var(--brand-gold) !important;
 }
 

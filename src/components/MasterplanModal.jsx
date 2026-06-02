@@ -1,8 +1,18 @@
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { responsiveMapZoom } from '../utils';
 
-const MAPTILER_KEY = 'Z9dW9MP2fONkRosZa0j0';
-import { PLOT_INVENTORY } from '../data/plotInventory';
+// Same georeferenced corners as the live homepage map so the modal shows the
+// exact "nicely made" masterplan rendering (satellite + 3D terrain + the
+// rendered masterplan artwork). No plot circles — just the neighbourhood map.
+// The camera matches the Home / Neighbourhood framing and is LOCKED (non-interactive).
+const MASTERPLAN_COORDS = [
+  [73.45426414958871, 19.64090642755213], // NW (rotated)
+  [73.4627119222577, 19.65026986516813],  // NE (rotated)
+  [73.46851736082246, 19.64503214935796], // SE (rotated)
+  [73.46006958815347, 19.63566871174196], // SW (rotated)
+];
 
 export default function MasterplanModal({ show, onClose, theme }) {
   const mapRef = useRef(null);
@@ -10,45 +20,74 @@ export default function MasterplanModal({ show, onClose, theme }) {
 
   const setupLayers = (map) => {
     if (!map || !map.getCanvas()) return;
+    const key = import.meta.env.VITE_MAPTILER_KEY;
 
-    const pf = PLOT_INVENTORY.map(p => ({
-      type: 'Feature',
-      properties: { status: p.status },
-      geometry: { type: 'Point', coordinates: [p.longitude, p.latitude] }
-    }));
-
-    if (!map.getSource('mp')) {
-      map.addSource('mp', { type: 'geojson', data: { type: 'FeatureCollection', features: pf } });
-    }
-
-    if (!map.getLayer('mf')) {
-      map.addLayer({
-        id: 'mf', type: 'circle', source: 'mp',
-        paint: {
-          'circle-radius': 4,
-          'circle-color': ['match', ['get', 'status'], 'sold', '#555555', 'reserved', '#CE9A52', '#00C853'],
-          'circle-stroke-width': 1,
-          'circle-stroke-color': '#FFFFFF'
-        }
+    // 3D terrain — gives the Kasara hills their relief under a pitched camera
+    if (!map.getSource('terrain')) {
+      map.addSource('terrain', {
+        type: 'raster-dem',
+        url: `https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=${key}`,
+        tileSize: 256,
       });
     }
-    
+    map.setTerrain({ source: 'terrain', exaggeration: 1.8 });
+
+    // The rendered masterplan artwork, draped over the satellite imagery
+    if (!map.getSource('masterplan')) {
+      map.addSource('masterplan', {
+        type: 'image',
+        url: '/data/layer-1-masterplan.png',
+        coordinates: MASTERPLAN_COORDS,
+      });
+    }
+    if (!map.getLayer('masterplan-layer')) {
+      map.addLayer({
+        id: 'masterplan-layer',
+        type: 'raster',
+        source: 'masterplan',
+        paint: { 'raster-opacity': 0.95 },
+      });
+    }
+    // No plot circles here — the masterplan shows the neighbourhood map only.
+  };
+
+  // Frame the masterplan to match the Home / Neighbourhood "normal" view:
+  // same center + bearing, a gentle 3D tilt, and a width-responsive zoom so the
+  // estate is framed identically across screen sizes.
+  const frameMasterplan = (map, animate) => {
+    if (!map) return;
+    const width = mapContainerRef.current?.clientWidth || window.innerWidth;
+    const camera = {
+      center: [73.462444, 19.643662], // same center as the Home / Neighbourhood view
+      zoom: responsiveMapZoom(16.42, width),
+      pitch: 45,
+      bearing: -42.2,
+    };
+    if (animate) map.flyTo({ ...camera, duration: 1400, essential: true });
+    else map.jumpTo(camera);
   };
 
   useEffect(() => {
+    const key = import.meta.env.VITE_MAPTILER_KEY;
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      style: `https://api.maptiler.com/maps/019e818f-2ef6-77ca-af90-84fedc9100a3/style.json?key=${MAPTILER_KEY}`,
-      center: [73.46265, 19.64076],
-      zoom: 14.5,
-      antialias: true
+      style: `https://api.maptiler.com/maps/hybrid/style.json?key=${key}`,
+      center: [73.462444, 19.643662],
+      zoom: 15,
+      pitch: 45,
+      bearing: -42.2,
+      maxPitch: 85,
+      antialias: true,
+      interactive: false, // locked, still presentation map — no drag / zoom / rotate
     });
 
     map.on('load', () => {
       setupLayers(map);
+      frameMasterplan(map, false);
       mapRef.current = map;
     });
 
+    // A style swap rebuilds all layers — re-add ours.
     map.on('style.load', () => {
       setupLayers(map);
     });
@@ -59,56 +98,62 @@ export default function MasterplanModal({ show, onClose, theme }) {
     };
   }, []); // Init once on mount
 
-  // Resize when shown
+  // Resize + re-frame when the modal becomes visible
   useEffect(() => {
     if (show && mapRef.current) {
       setTimeout(() => {
         mapRef.current.resize();
-        mapRef.current.easeTo({ center: [73.46265, 19.64076], zoom: 14.5, duration: 800 });
+        frameMasterplan(mapRef.current, true);
       }, 300);
     }
   }, [show]);
 
-  // Handle Theme Change
+  // Keep the locked framing responsive if the window resizes while open
   useEffect(() => {
-    if (!mapRef.current) return;
-    mapRef.current.setStyle(`https://api.maptiler.com/maps/019e818f-2ef6-77ca-af90-84fedc9100a3/style.json?key=${MAPTILER_KEY}`);
-  }, [theme]);
+    if (!show) return;
+    const onResize = () => {
+      if (!mapRef.current) return;
+      mapRef.current.resize();
+      frameMasterplan(mapRef.current, false);
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [show]);
 
   return (
     <div id="mpmod" className={show ? 'show' : ''} onClick={onClose}>
       <div className="mpinner brand-frame" onClick={e => e.stopPropagation()}>
         <div className="mpclose" onClick={onClose}>✕</div>
-        <div className="mptitle headline">Belle Vie · Kasara Hills</div>
-        <div className="mpsub subhead">482 Plots · 5 Lifestyle Zones · 35.6 Hectares · 26 Amenities</div>
+        <div className="mptitle headline">Belle Vie · Masterplan</div>
+        <div className="mpsub subhead">35.6 Hectares · 18 Premium Residential Plots</div>
         <div className="mpgrid">
           <div className="mpcard">
             <div className="mpcico">🏡</div>
-            <div className="mpctit headline">482 Residential Plots</div>
-            <div className="mpcdesc">Five curated zones across Kasara Hills — Gateway District, Recreation Hub, Garden Valley, Forest Ridge & Water's Edge.</div>
+            <div className="mpctit headline">18 Premium Plots</div>
+            <div className="mpcdesc">Individually curated plots with panoramic hill views.</div>
           </div>
           <div className="mpcard">
-            <div className="mpcico">🌿</div>
-            <div className="mpctit headline">26 Amenities</div>
-            <div className="mpcdesc">Nature trails, bamboo groves, elevated walkway, viewpoint, oasis parks, water reservoir dam, and serenity gardens.</div>
+            <div className="mpcico">🌳</div>
+            <div className="mpctit headline">Nature Trails</div>
+            <div className="mpcdesc">Over 41,000 sqm of landscaped greens and walking trails.</div>
           </div>
           <div className="mpcard">
             <div className="mpcico">🏛️</div>
-            <div className="mpctit headline">Valley Vista Clubhouse</div>
-            <div className="mpcdesc">Swimming pool, Pavilion Clubhouse, Joy Junction Kids Park and scenic hill views across the entire estate.</div>
+            <div className="mpctit headline">Clubhouse</div>
+            <div className="mpcdesc">A signature Rustomjee experience with world-class amenities.</div>
           </div>
         </div>
         <div id="mpmap" ref={mapContainerRef}></div>
       </div>
       <style>{`
-        #mpmod { 
-          position: fixed; inset: 0; z-index: 2000; background: var(--glass-bg); 
+        #mpmod {
+          position: fixed; inset: 0; z-index: 2000; background: var(--glass-bg);
           backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: center; padding: 40px;
           opacity: 0; pointer-events: none; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
         #mpmod.show { opacity: 1; pointer-events: auto; }
-        .mpinner { 
-          background: var(--bg-primary); width: 100%; max-width: 1000px; max-height: 90vh; 
+        .mpinner {
+          background: var(--bg-primary); width: 100%; max-width: 1000px; max-height: 90vh;
           overflow: auto; padding: 48px; position: relative; border-color: var(--gold-b);
           transform: translateY(20px); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -123,7 +168,7 @@ export default function MasterplanModal({ show, onClose, theme }) {
         .mpcico { font-size: 28px; margin-bottom: 12px; }
         .mpctit { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary); letter-spacing: 0.1em; }
         .mpcdesc { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
-        #mpmap { width: 100%; height: 350px; border: 1px solid var(--border); filter: ${theme === 'dark' ? 'grayscale(0.2) contrast(1.1)' : 'none'}; }
+        #mpmap { width: 100%; height: 350px; border: 1px solid var(--border); }
         @media (max-width: 768px) {
           #mpmod { padding: 16px; }
           .mpinner { padding: 24px; }
@@ -135,4 +180,3 @@ export default function MasterplanModal({ show, onClose, theme }) {
     </div>
   );
 }
-
