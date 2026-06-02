@@ -28,6 +28,8 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
   const viewModeRef = useRef(viewMode);
   const selectedConnectivityRef = useRef(selectedConnectivity);
   const activeZoneRef = useRef(activeZone);
+  const styleReadyRef = useRef(false); // true after the first style.load; gates one-time camera setup
+  const pendingCamRef = useRef(null);  // camera captured before a style swap, restored after it loads
   const rotationAnimationRef = useRef(null);
   const stopRotationRef = useRef(null);
   const startRotationRef = useRef(null);
@@ -476,9 +478,18 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
             m.setPaintProperty('plots-circle', 'circle-opacity', 0.55);
           }
         }
-        if (viewModeRef.current === '3D') {
-          m.setPitch(60);
-          m.setBearing(-15);
+        if (pendingCamRef.current) {
+          // A style swap (Satellite⇄Raster / theme): restore the EXACT camera the
+          // user was looking at before the swap, so the two modes stay in sync.
+          m.jumpTo(pendingCamRef.current);
+          pendingCamRef.current = null;
+        } else if (!styleReadyRef.current) {
+          // First load only: establish the initial 3D pose.
+          styleReadyRef.current = true;
+          if (viewModeRef.current === '3D') {
+            m.setPitch(60);
+            m.setBearing(-15);
+          }
         }
       }
     });
@@ -495,10 +506,18 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, mapType,
     };
   }, []);
 
-  // Handle Theme/MapType Change
+  // Handle Theme/MapType Change — capture the live camera so it can be restored
+  // exactly once the new style finishes loading (keeps Satellite⇄Raster in sync).
   useEffect(() => {
     if (!mapRef.current) return;
-    mapRef.current.setStyle(getStyle());
+    const m = mapRef.current;
+    pendingCamRef.current = {
+      center: m.getCenter(),
+      zoom: m.getZoom(),
+      pitch: m.getPitch(),
+      bearing: m.getBearing(),
+    };
+    m.setStyle(getStyle());
   }, [theme, mapType]);
 
   // Handle plot selection: camera movement, highlights, and interaction control

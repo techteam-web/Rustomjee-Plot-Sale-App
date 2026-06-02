@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { formatCurrency, hdist, getAmenitiesWithDistance } from '../utils';
-import { CITIES, AMEN } from '../data/plots';
+import { formatCurrency, getAmenitiesWithDistance } from '../utils';
 import amenitiesData from '../data/amenities.json';
+import AmenityIcon from './AmenityIcon';
 import gsap from 'gsap';
 
 export default function PlotDetails({ plot, onClose }) {
@@ -72,35 +72,13 @@ export default function PlotDetails({ plot, onClose }) {
             </div>
           </div>
 
-          <div className="ps gsap-stagger">
-            <div className="pst headline">Proximity to Amenities</div>
+          <div className="ps gsap-stagger ps-amen">
+            <div className="pst headline">All Amenities & Distance <span className="amen-count">{getAmenitiesWithDistance(plot.center, amenitiesData).length}</span></div>
             <div className="amen-list">
-              {Object.values(AMEN).map((am, i) => {
-                const d = Math.round(hdist(plot.center, am.center));
-                const pct = Math.max(5, Math.min(100, 100 - d / am.max * 100));
-                return (
-                  <div key={i} className="amrow">
-                    <div className="aml">
-                      <span className="am-icon">{am.icon}</span>
-                      <div className="am-info">
-                        <div className="am-name">{am.name}</div>
-                        <div className="ambar"><div className="amfill" style={{ width: `${pct}%` }}></div></div>
-                      </div>
-                    </div>
-                    <div className="amdist headline">{d}m</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="ps gsap-stagger">
-            <div className="pst headline">All Amenities & Distance</div>
-            <div className="amen-list" style={{ maxHeight: '300px', overflowY: 'auto' }}>
               {getAmenitiesWithDistance(plot.center, amenitiesData).map((am) => (
                 <div key={am.id} className="amrow">
                   <div className="aml">
-                    <span className="am-icon">📍</span>
+                    <span className="am-icon"><AmenityIcon name={am.name} category={am.category} /></span>
                     <div className="am-info">
                       <div className="am-name">{am.name}</div>
                     </div>
@@ -111,7 +89,7 @@ export default function PlotDetails({ plot, onClose }) {
             </div>
           </div>
 
-          <div className="ps gsap-stagger" style={{ borderBottom: 'none', marginTop: 'auto' }}>
+          <div className="ps gsap-stagger ps-actions" style={{ borderBottom: 'none' }}>
             <div className="actrow">
               <button
                 className="btn-brand primary flex-1"
@@ -150,8 +128,10 @@ export default function PlotDetails({ plot, onClose }) {
         .pht { padding-right: 40px; }
         .phn { font-size: 20px; font-weight: 700; color: var(--text-primary); position: relative; z-index: 1; margin-bottom: 2px; }
         .php { font-size: 10px; color: var(--brand-gold); text-transform: uppercase; letter-spacing: 0.1em; position: relative; z-index: 1; }
-        .pb { padding: 16px; display: flex; flex-direction: column; flex: 1; }
+        .pb { padding: 16px; display: flex; flex-direction: column; flex: 1; min-height: 0; }
         .ps { border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 14px; }
+        .ps-amen { flex: 1 1 auto; min-height: 200px; display: flex; flex-direction: column; }
+        .ps-actions { flex-shrink: 0; }
         .pst { font-size: 9px; letter-spacing: 0.2em; color: var(--brand-gold); margin-bottom: 12px; font-weight: 700; }
         .sbadge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 700; border: 1px solid var(--border); margin-bottom: 16px; }
         .sbadge.available { color: var(--brand-green); border-color: rgba(181, 209, 141, 0.3); background: rgba(181, 209, 141, 0.05); }
@@ -173,10 +153,12 @@ export default function PlotDetails({ plot, onClose }) {
         .di-l { font-size: 8px; color: var(--text-muted); letter-spacing: 0.1em; margin-bottom: 3px; }
         .di-v { font-size: 12px; font-weight: 600; color: var(--text-primary); }
         .gold { color: var(--brand-gold) !important; }
-        .amrow { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--border); }
+        .amen-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 6px; }
+        .amen-count { color: var(--text-muted); font-weight: 600; letter-spacing: 0; }
+        .amrow { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); }
         .amrow:last-child { border-bottom: none; }
         .aml { display: flex; align-items: center; gap: 10px; flex: 1; }
-        .am-icon { font-size: 16px; width: 20px; }
+        .am-icon { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; color: var(--brand-gold); flex-shrink: 0; }
         .am-info { flex: 1; }
         .am-name { font-size: 10px; color: var(--text-primary); margin-bottom: 4px; }
         .ambar { height: 2px; background: var(--border); width: 80%; border-radius: 2px; }

@@ -136,34 +136,6 @@ export default function Sidebar({
         </div>
       </div>
 
-      <PlotFinder
-        plots={plots}
-        activeZone={activeZone}
-        onZoneSelect={onZoneSelect}
-        onZoneClear={onZoneClear}
-        plotElevations={plotElevations || {}}
-      />
-
-      <div className="sbs sbs-stagger">
-        <div className="sbt headline">Connectivity</div>
-        <div className="conn-grid">
-          {CONNECTIVITY.map((item, idx) => (
-            <div
-              key={item.id}
-              className={`conn-card ${selectedConnectivity === idx ? 'active' : ''}`}
-              onClick={() => setSelectedConnectivity(selectedConnectivity === idx ? null : idx)}
-            >
-              <div className="conn-icon">{item.icon}</div>
-              <div className="conn-info">
-                <div className="conn-label">{item.label}</div>
-                <div className="conn-distance">{item.distance}</div>
-                <div className="conn-time">{item.driveTime}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       <div className="sbs sbs-stagger" style={{ paddingBottom: '8px' }}>
         <div className="sbt headline">Plot Inventory</div>
         <div className="inv-stat">{filteredPlots.length} of {plots.length} plots</div>
