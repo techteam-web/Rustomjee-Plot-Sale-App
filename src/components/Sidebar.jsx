@@ -17,8 +17,6 @@ export default function Sidebar({
   onPlotClick,
   viewMode,
   setViewMode,
-  mapType,
-  setMapType,
   selectedConnectivity,
   setSelectedConnectivity,
   activeZone,
@@ -72,14 +70,6 @@ export default function Sidebar({
 
   return (
     <div id="sb" ref={sidebarRef}>
-      <div className="sbs sbs-stagger">
-        <div className="sbt headline">Map View</div>
-        <div className="vtrow">
-          <div className={`vt ${mapType === 'satellite' ? 'on' : ''}`} onClick={() => setMapType('satellite')}>Satellite</div>
-          <div className={`vt ${mapType === 'standard' ? 'on' : ''}`} onClick={() => setMapType('standard')}>Raster</div>
-        </div>
-      </div>
-
       <div className="sbs sbs-stagger">
         <div className="sbt headline">Availability</div>
         <div className="leg" ref={legRef}>
@@ -202,16 +192,12 @@ export default function Sidebar({
           }
         }
         .sbs { padding: 20px 24px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-        .sbt { font-size: 11px; letter-spacing: 0.2em; color: var(--brand-gold); margin-bottom: 16px; font-weight: 600; }
+        .sbt { font-size: 11px; letter-spacing: 0.2em; color: var(--brand-gold); margin-bottom: 16px; font-weight: 400; }
         .sgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .sc { background: var(--card-bg); border: 1px solid var(--border); padding: 12px; transition: all 0.3s; }
         .sc:hover { background: var(--gold-p); border-color: var(--gold-b); }
-        .sv { font-size: 22px; font-family: 'Playfair Display', serif; color: var(--text-primary); font-weight: 600; }
+        .sv { font-size: 22px; color: var(--text-primary); }
         .sl { font-size: 9px; color: var(--gray); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px; }
-        .vtrow { display: flex; gap: 1px; background: var(--gold-b); border: 1px solid var(--gold-b); }
-        .vt { flex: 1; padding: 10px; text-align: center; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
-              cursor: pointer; background: var(--brand-black); color: var(--gray); transition: all 0.3s; font-weight: 500; }
-        .vt.on { background: var(--text-secondary); color: var(--bg-primary); }
         .leg { display: flex; flex-direction: column; gap: 10px; position: relative; padding-left: 22px; }
         .leg-track {
           position: absolute;
@@ -220,15 +206,15 @@ export default function Sidebar({
           height: 10px;
           border-radius: 50%;
           background: var(--brand-gold);
-          box-shadow: 0 0 8px rgba(206, 154, 82, 0.5);
+          box-shadow: 0 0 8px rgba(26, 58, 74, 0.45);
         }
         .legr { display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 4px 0; opacity: 0.7; transition: all 0.3s; }
         .legr:hover, .legr.active { opacity: 1; }
         .ld { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; transition: all 0.3s ease; }
         .ll { font-size: 12px; color: var(--text-secondary); letter-spacing: 0.05em; font-weight: 500; }
-        .lc { margin-left: auto; font-size: 10px; color: var(--brand-gold); font-weight: 600; background: var(--gold-p); padding: 2px 8px; }
+        .lc { margin-left: auto; font-size: 10px; color: var(--brand-gold); font-weight: 400; background: var(--gold-p); padding: 2px 8px; }
         .rrow { display: flex; justify-content: space-between; margin-bottom: 8px; }
-        .rv { font-size: 12px; color: var(--brand-gold); font-weight: 600; font-family: 'Inter', sans-serif; }
+        .rv { font-size: 12px; color: var(--brand-gold); font-weight: 400; font-family: 'Inter', sans-serif; }
         .range-container { position: relative; height: 20px; margin-bottom: 12px; }
         input[type=range] { width: 100%; accent-color: var(--brand-gold); height: 2px; cursor: pointer; position: absolute; top: 0; background: transparent; -webkit-appearance: none; }
         input[type=range]::-webkit-slider-runnable-track { background: var(--border); height: 2px; }
@@ -243,10 +229,10 @@ export default function Sidebar({
                cursor: pointer; border-bottom: 1px solid var(--border); transition: all 0.3s; flex-shrink: 0; }
         .pli:hover { background: var(--card-bg); }
         .pli.on { background: var(--card-bg); border-left: 4px solid var(--text-secondary); }
-        .pln { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+        .pln { font-size: 14px; font-weight: 400; color: var(--text-primary); }
         .plm { font-size: 11px; color: var(--gray); margin-top: 4px; }
-        .plp { font-size: 14px; color: var(--brand-gold); font-weight: 600; text-align: right; }
-        .pls { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px; text-align: right; font-weight: 700; }
+        .plp { font-size: 14px; color: var(--brand-gold); text-align: right; }
+        .pls { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px; text-align: right; font-weight: 400; }
         .pls.available { color: var(--brand-green); }
         .pls.sold { color: var(--gray); }
         .pls.reserved { color: var(--brand-gold); }

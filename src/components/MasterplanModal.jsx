@@ -161,12 +161,12 @@ export default function MasterplanModal({ show, onClose, theme }) {
         .mpclose { position: absolute; top: 24px; right: 24px; width: 40px; height: 40px; background: var(--card-bg); border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--brand-gold); transition: all 0.3s; }
         .mpclose:hover { background: var(--brand-gold); color: var(--bg-primary); }
         .mptitle { font-size: 32px; margin-bottom: 8px; color: var(--text-primary); }
-        .mpsub { font-size: 14px; color: var(--brand-gold); margin-bottom: 32px; letter-spacing: 0.05em; }
+        .mpsub { font-size: 14px; color: var(--brand-gold); margin-bottom: 32px; letter-spacing: 0.05em; font-family: 'Inter', sans-serif; font-weight: 300; font-style: normal; }
         .mpgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 40px; }
         .mpcard { background: var(--card-bg); border: 1px solid var(--border); padding: 24px; transition: all 0.3s; }
         .mpcard:hover { border-color: var(--brand-gold); background: var(--gold-p); }
         .mpcico { font-size: 28px; margin-bottom: 12px; }
-        .mpctit { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary); letter-spacing: 0.1em; }
+        .mpctit { font-size: 14px; font-weight: 400; margin-bottom: 8px; color: var(--text-primary); letter-spacing: 0.1em; }
         .mpcdesc { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
         #mpmap { width: 100%; height: 350px; border: 1px solid var(--border); }
         @media (max-width: 768px) {

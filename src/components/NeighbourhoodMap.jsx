@@ -1,8 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { PROJECT, CONNECTIVITY_PLACES, TOURIST_SPOTS, TOURS, CATEGORY_META, ALL_PLACES, findPlace } from '../data/neighbourhood';
+import { PROJECT, CONNECTIVITY_PLACES, TOURIST_SPOTS, TOURS, CATEGORY_META, ALL_PLACES, findPlace, ROUTE_WAYPOINTS } from '../data/neighbourhood';
 import { responsiveMapZoom } from '../utils';
+import { prefersReducedMotion } from '../lib/Gsapconfig';
 
 // Self-contained map for the Neighbourhood view. Same base style + terrain +
 // masterplan overlay as the Home map, but instead of plots it shows the PDF's
@@ -89,6 +90,51 @@ function sliceToDist(coords, cum, target) {
   return out;
 }
 
+// Tiny duotone-ish glyphs for journey waypoint cards (gold stroke via CSS currentColor).
+const WAYPOINT_GLYPH = {
+  toll:     '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="5" height="12" rx="0.6"/><path d="M9 11h11M9 15h11"/><path d="M20 11v9"/></svg>',
+  tunnel:   '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V12a9 9 0 0 1 18 0v9"/><path d="M9 21v-8a3 3 0 0 1 6 0v8"/></svg>',
+  bridge:   '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8v9M21 8v9"/><path d="M3 13h18"/><path d="M3 13c5-6 13-6 18 0"/></svg>',
+  landmark: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11Z"/><circle cx="12" cy="10" r="2.2"/></svg>',
+};
+
+// Reveal curve for a waypoint as journey progress `p` passes its position `wpP`:
+// hidden before → fades in to full right as the line reaches it → settles to a dim
+// "passed" state (lightly visible, never gone). Matches the approved spec.
+function waypointOpacity(p, wpP) {
+  if (p < wpP) return 0;
+  const FADE_IN = 0.06; // ramp 0→1 as the line reaches it
+  const SETTLE = 0.16;  // then ease 1→0.5 once clearly passed
+  if (p < wpP + FADE_IN) return (p - wpP) / FADE_IN;
+  const k = Math.min(1, (p - wpP - FADE_IN) / SETTLE);
+  return 1 - 0.5 * k;
+}
+
+// Snap a real [lng, lat] onto the route polyline → its progress (0–1 along the line).
+// Dependency-free equivalent of turf.nearestPointOnLine + turf.length: projects the point
+// onto each segment in a local equirectangular frame (accurate at these distances) and
+// returns the cumulative along-line distance of the nearest projection / total length.
+// Use: ROUTE_WAYPOINTS could later store [lng,lat] and we'd derive `progress` via this.
+function progressForCoord(pt, coords, cum) {
+  const total = cum[cum.length - 1];
+  if (!total) return 0;
+  const kx = Math.cos((pt[1] * Math.PI) / 180); // lng→x scale at this latitude
+  const px = pt[0] * kx, py = pt[1];
+  let best = { d2: Infinity, dist: 0 };
+  for (let i = 1; i < coords.length; i++) {
+    const ax = coords[i - 1][0] * kx, ay = coords[i - 1][1];
+    const bx = coords[i][0] * kx, by = coords[i][1];
+    const dx = bx - ax, dy = by - ay;
+    const seg2 = dx * dx + dy * dy;
+    let f = seg2 ? ((px - ax) * dx + (py - ay) * dy) / seg2 : 0;
+    f = Math.max(0, Math.min(1, f));
+    const cx = ax + dx * f, cy = ay + dy * f;
+    const d2 = (px - cx) ** 2 + (py - cy) ** 2;
+    if (d2 < best.d2) best = { d2, dist: cum[i - 1] + (cum[i] - cum[i - 1]) * f };
+  }
+  return best.dist / total;
+}
+
 // Smooth 0→1 ramp between edges a and b (zero velocity at both ends) — blends camera
 // keyframes (zoom / pitch / bearing) without any speed discontinuity.
 function smoothstep(a, b, x) {
@@ -159,7 +205,6 @@ const placeFeatures = ALL_PLACES.map((p) => ({
 
 export default function NeighbourhoodMap({
   theme,
-  mapType,
   selectedPlace,
   tour,
   tourPlayToken,
@@ -173,7 +218,6 @@ export default function NeighbourhoodMap({
   const homeZoomRef = useRef(HOME_CAMERA.zoom); // responsive home zoom (recomputed for the current map width)
 
   const themeRef = useRef(theme);
-  const mapTypeRef = useRef(mapType);
   const selectedPlaceRef = useRef(selectedPlace);
   const tourRef = useRef(tour);
   const onTourStepRef = useRef(onTourStep);
@@ -191,9 +235,10 @@ export default function NeighbourhoodMap({
   const flyAlongTimerRef = useRef(null);
   const flyAlongActiveRef = useRef(false);
   const pulseRafRef = useRef(null); // breathing-glow animation on the route halo
+  const waypointMarkersRef = useRef([]); // DOM marker cards for journey waypoints (tunnel/toll/bridge/landmark)
+  const waypointDefsRef = useRef([]);    // pending waypoint defs — built only once the travel (line-progress) phase starts
 
   useEffect(() => { themeRef.current = theme; }, [theme]);
-  useEffect(() => { mapTypeRef.current = mapType; }, [mapType]);
   useEffect(() => { selectedPlaceRef.current = selectedPlace; }, [selectedPlace]);
   useEffect(() => { tourRef.current = tour; }, [tour]);
   useEffect(() => { onTourStepRef.current = onTourStep; }, [onTourStep]);
@@ -202,9 +247,8 @@ export default function NeighbourhoodMap({
 
   const getStyle = () => {
     const key = import.meta.env.VITE_MAPTILER_KEY;
-    if (mapTypeRef.current === 'satellite')
-      return `https://api.maptiler.com/maps/hybrid/style.json?key=${key}`;
-    return `https://api.maptiler.com/maps/landscape/style.json?key=${key}`;
+    // Satellite-only (this view was always satellite; raster removed project-wide).
+    return `https://api.maptiler.com/maps/hybrid/style.json?key=${key}`;
   };
 
   const cancelTour = () => {
@@ -212,8 +256,20 @@ export default function NeighbourhoodMap({
     if (tourTimerRef.current) { clearTimeout(tourTimerRef.current); tourTimerRef.current = null; }
   };
 
+  // Remove all journey-waypoint DOM cards + empty their dot source. Called whenever a
+  // journey is replaced/cancelled (NOT on natural arrival — there they persist, dimmed).
+  const clearWaypoints = () => {
+    waypointMarkersRef.current.forEach((w) => { if (w.marker) w.marker.remove(); });
+    waypointMarkersRef.current = [];
+    waypointDefsRef.current = [];
+    const map = mapRef.current;
+    const src = map && map.getSource && map.getSource('journey-waypoints');
+    if (src) src.setData({ type: 'FeatureCollection', features: [] });
+  };
+
   const cancelFlyAlong = () => {
     flyAlongActiveRef.current = false;
+    clearWaypoints();
     if (flyAlongRafRef.current) { cancelAnimationFrame(flyAlongRafRef.current); flyAlongRafRef.current = null; }
     if (flyAlongTimerRef.current) { clearTimeout(flyAlongTimerRef.current); flyAlongTimerRef.current = null; }
     // Re-clamp the camera centre to the terrain. During a fly-along we unclamp it and drive our own
@@ -253,6 +309,67 @@ export default function NeighbourhoodMap({
     }
   };
 
+  // Push current opacities to the dot source + DOM cards, given journey progress `p`.
+  // Throttled: only writes (setData + DOM) when an opacity actually moves, so steady states
+  // (all-hidden / settled-dim) cost nothing per frame — keeps the camera animation smooth.
+  const updateWaypoints = (map, p) => {
+    const list = waypointMarkersRef.current;
+    if (!list.length) return;
+    let changed = false;
+    const features = list.map((w) => {
+      const o = waypointOpacity(p, w.progress);
+      if (w.lastO === undefined || Math.abs(o - w.lastO) > 0.012) {
+        w.lastO = o;
+        if (w.el) w.el.style.opacity = String(o);
+        changed = true;
+      }
+      return { type: 'Feature', properties: { opacity: w.lastO }, geometry: { type: 'Point', coordinates: w.coord } };
+    });
+    if (!changed) return;
+    const src = map.getSource('journey-waypoints');
+    if (src) src.setData({ type: 'FeatureCollection', features });
+  };
+
+  // Reduced-motion / static fallback: every waypoint fully visible at once (no timed reveal).
+  const revealAllWaypoints = (map) => {
+    const list = waypointMarkersRef.current;
+    const features = list.map((w) => {
+      w.lastO = 1;
+      if (w.el) w.el.style.opacity = '1';
+      return { type: 'Feature', properties: { opacity: 1 }, geometry: { type: 'Point', coordinates: w.coord } };
+    });
+    const src = map.getSource('journey-waypoints');
+    if (src) src.setData({ type: 'FeatureCollection', features });
+  };
+
+  // When a route lands, position each waypoint on the real polyline (pointAtDist at
+  // progress·total), compute "km to site" remaining, and create its glass DOM card (hidden
+  // until the reveal). prefers-reduced-motion → show them all immediately, statically.
+  const buildWaypoints = (map, camData, defs) => {
+    if (!defs || !defs.length) return;
+    const { coords, cum, total } = camData;
+    const list = defs.map((w, idx) => {
+      // Each waypoint is positioned by `progress` (fraction along route). If a real [lng,lat]
+      // `coord` is supplied instead, snap it onto the polyline to derive its progress.
+      const progress = w.progress != null ? w.progress : progressForCoord(w.coord, coords, cum);
+      const dist = progress * total;
+      const coord = pointAtDist(coords, cum, dist);
+      const remainingKm = ((total - dist) / 1000).toFixed(1);
+      const el = document.createElement('div');
+      el.className = 'nwp-card';
+      el.style.opacity = prefersReducedMotion ? '1' : '0';
+      el.innerHTML =
+        `<span class="nwp-glyph">${WAYPOINT_GLYPH[w.type] || WAYPOINT_GLYPH.landmark}</span>` +
+        `<span class="nwp-text"><span class="nwp-name">${w.name}</span>` +
+        `<span class="nwp-dist">${remainingKm} km to site</span></span>`;
+      const marker = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -10] }).setLngLat(coord).addTo(map);
+      return { id: `${idx}-${w.name}`, name: w.name, type: w.type, progress, coord, remainingKm, el, marker };
+    });
+    waypointMarkersRef.current = list;
+    if (prefersReducedMotion) revealAllWaypoints(map);
+    else updateWaypoints(map, 0); // all hidden initially
+  };
+
   // Fly to frame the origin→dest path with the path receding toward the top.
   const frameRoute = (map, origin, dest, duration) => {
     const bearing = geoBearing(origin, dest);
@@ -285,16 +402,18 @@ export default function NeighbourhoodMap({
     const camCum = [0];
     for (let i = 1; i < camPts.length; i++) camCum[i] = camCum[i - 1] + haversineM(camPts[i - 1], camPts[i]);
     const camTotal = camCum[camCum.length - 1] || total;
-    const durMs = Math.min(8000, Math.max(4000, 2800 + (total / 1000) * 55)); // ~4s short → ~8s far, never rushed
+    // Unhurried travel along the route (slower = smoother): ~9s for short hops up to ~13s for the
+    // long city runs. (~2km≈9.0s, ~50km≈9.0s, ~75km≈10.0s, ~100km≈12.0s, ≥113km=13.0s.) Easing unchanged.
+    const durMs = Math.min(15000, Math.max(14000, 12000 + (total / 1000) * 50));
     return { coords, cum, total, camPts, camCum, camTotal, durMs, dest: coords[coords.length - 1] };
   };
 
   // Single place selected → ONE continuous cinematic move (entry → travel → arrival) run as
   // a single rAF, with NO separate flyTo — so there is never a hand-off snap. See flyAlongRoute.
-  const drawSingleRoute = (map, dest) => {
+  const drawSingleRoute = (map, dest, waypointDefs = []) => {
     if (routeAbortRef.current) { routeAbortRef.current.abort(); routeAbortRef.current = null; }
     cancelTour();
-    cancelFlyAlong();
+    cancelFlyAlong(); // also clears any prior waypoint cards
     const project = PROJECT.coords;
 
     // Place co-located with the project (e.g. the Samruddhi connection point) → just settle.
@@ -306,6 +425,7 @@ export default function NeighbourhoodMap({
 
     setRoute(map, null);
     flyAlongActiveRef.current = true;
+    waypointDefsRef.current = waypointDefs; // built later, only when the travel phase begins
 
     const entryBearing = geoBearing(dest, project);
     const cruiseZoom = zoomForDistance(haversineM(dest, project) * 1.3);
@@ -345,7 +465,9 @@ export default function NeighbourhoodMap({
   // EXACTLY at the home framing — no hand-off between camera systems anywhere, hence no snap.
   const flyAlongRoute = (map, dest, from, entryBearing, cruiseZoom, getCamData) => {
     if (!flyAlongActiveRef.current) return;
-    const ENTRY_MS = 1600;
+    // Smooth, unhurried fly-in from the plot out to the place: ≥3s (farther places a little longer,
+    // up to 5s). Also gives the OSRM route ample time to land before travel starts → no freeze-snap.
+    const ENTRY_MS = Math.min(5000, Math.max(3000, 2400 + haversineM(from.c, dest) / 50));
     const ARRIVE = 0.6, TURN_TAU = 600, ELEV_TAU = 600;
     const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
     // Zoom-out arc depth for the fly-in: farther entries pull out more so they don't blur past.
@@ -377,7 +499,11 @@ export default function NeighbourhoodMap({
         const rawE = map.queryTerrainElevation(center);
         if (rawE != null) elevCtrl += (rawE - elevCtrl) * (1 - Math.exp(-dt / ELEV_TAU));
         map.jumpTo({ center, zoom, bearing, pitch, elevation: elevCtrl });
-        if (e >= 1 && getCamData()) phase = 'travel'; // wait for BOTH: entry finished AND route ready
+        if (e >= 1 && getCamData()) {
+          phase = 'travel';
+          // Build waypoint cards ONLY now — as the line-progress journey starts, never during the fly-in.
+          if (!waypointMarkersRef.current.length) buildWaypoints(map, getCamData(), waypointDefsRef.current);
+        }
         flyAlongRafRef.current = requestAnimationFrame(loop);
         return;
       }
@@ -412,6 +538,8 @@ export default function NeighbourhoodMap({
         setRoute(map, sliceToDist(coords, cum, along));
         lastReveal = along;
       }
+      // Progress-driven waypoint reveal (skipped under reduced motion — those show statically).
+      if (!prefersReducedMotion && waypointMarkersRef.current.length) updateWaypoints(map, p);
       if (t < 1) {
         flyAlongRafRef.current = requestAnimationFrame(loop);
       } else {
@@ -512,6 +640,26 @@ export default function NeighbourhoodMap({
         paint: { 'text-color': '#FFFFFF', 'text-halo-color': '#000000', 'text-halo-width': 1.4 },
       });
     }
+
+    // Journey-waypoint dots (sits ON TOP of the frozen route/marker/label layers; data-driven
+    // per-feature `opacity` is updated each frame by updateWaypoints during the fly-along).
+    // The matching labels are glass DOM-marker cards (see buildWaypoints). Empty until a journey.
+    if (!map.getSource('journey-waypoints')) {
+      map.addSource('journey-waypoints', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    }
+    if (!map.getLayer('journey-waypoint-dot')) {
+      map.addLayer({
+        id: 'journey-waypoint-dot', type: 'circle', source: 'journey-waypoints',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 3, 14, 5, 17, 6.5],
+          'circle-color': '#CE9A52',
+          'circle-opacity': ['get', 'opacity'],
+          'circle-stroke-color': '#FFFFFF',
+          'circle-stroke-width': 1.5,
+          'circle-stroke-opacity': ['get', 'opacity'],
+        },
+      });
+    }
   };
 
   // Init map once
@@ -542,7 +690,7 @@ export default function NeighbourhoodMap({
         runTour();
       } else if (selectedPlaceRef.current) {
         const pl = findPlace(selectedPlaceRef.current);
-        if (pl) drawSingleRoute(map, pl.coords);
+        if (pl) drawSingleRoute(map, pl.coords, ROUTE_WAYPOINTS[pl.id] || []);
       }
 
       const updateCursor = (c) => (map.getCanvas().style.cursor = c);
@@ -551,9 +699,10 @@ export default function NeighbourhoodMap({
         const f = e.features && e.features[0];
         if (!f) return;
         const meta = CATEGORY_META[f.properties.category];
+        const titleColor = themeRef.current === 'dark' ? '#9FCAD6' : '#1A3A4A';
         popup.setLngLat(f.geometry.coordinates).setHTML(
           `<div style="font-family:'Inter',sans-serif;padding:4px 2px;min-width:130px">
-             <div style="font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:#CE9A52">${f.properties.name}</div>
+             <div style="font-family:'Cormorant Garamond',serif;font-size:14px;font-weight:500;color:${titleColor}">${f.properties.name}</div>
              <div style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#999;margin-top:2px">${meta ? meta.label : ''}${f.properties.distance ? ' · ' + f.properties.distance : ''}</div>
            </div>`
         ).addTo(map);
@@ -599,15 +748,8 @@ export default function NeighbourhoodMap({
     };
   }, []);
 
-  // Theme / map-type change → swap base style (layers re-added on style.load).
-  // A style swap tears down + rebuilds all sources (incl. 'route'), so stop any
-  // in-flight fly-along first — otherwise it keeps driving a vanished route source.
-  useEffect(() => {
-    if (mapRef.current) {
-      cancelFlyAlong();
-      mapRef.current.setStyle(getStyle());
-    }
-  }, [theme, mapType]);
+  // (Theme/map-type style-swap effect removed — satellite-only, and this view's layers
+  // don't read theme. The hover popup reads themeRef live; no setStyle needed.)
 
   // Stop pressed (playing → false) → halt the tour + clear a deferred play.
   // cancelFlyAlong() is defensive: a single-place fly-along never runs while
@@ -626,7 +768,7 @@ export default function NeighbourhoodMap({
     if (!map || !map.isStyleLoaded()) return;
     if (selectedPlace) {
       const place = findPlace(selectedPlace);
-      if (place) drawSingleRoute(map, place.coords);
+      if (place) drawSingleRoute(map, place.coords, ROUTE_WAYPOINTS[place.id] || []);
     } else if (!playing && !tourRunningRef.current) {
       // User deselected (not a tour starting) → stop any fly-along, clear path + ease home
       if (routeAbortRef.current) { routeAbortRef.current.abort(); routeAbortRef.current = null; }
@@ -654,6 +796,14 @@ export default function NeighbourhoodMap({
         #nmap-wrap { flex: 1; position: relative; background: var(--bg-secondary); }
         #nmap { width: 100%; height: 100%; }
         #nmap-label { position: absolute; top: 24px; left: 24px; z-index: 10; background: var(--glass-bg); backdrop-filter: blur(8px); border: 1px solid var(--brand-gold); padding: 8px 16px; font-size: 10px; letter-spacing: 0.2em; color: var(--brand-gold); }
+        /* Journey waypoint cards — glass / hairline / gold accent, Sora. Colours come from the
+           theme CSS variables (--glass-bg / --text-primary / --brand-gold) so they follow the
+           current light or dark theme automatically. Opacity is driven per-frame by the reveal. */
+        .nwp-card { display: flex; align-items: center; gap: 7px; padding: 5px 9px; font-family: 'Sora', 'Inter', sans-serif; background: var(--glass-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--brand-gold); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.28); white-space: nowrap; pointer-events: none; will-change: opacity; }
+        .nwp-glyph { color: var(--brand-gold); display: flex; align-items: center; }
+        .nwp-text { display: flex; flex-direction: column; line-height: 1.2; }
+        .nwp-name { font-size: 11px; font-weight: 600; color: var(--text-primary); letter-spacing: 0.01em; }
+        .nwp-dist { font-size: 9px; font-weight: 500; color: var(--brand-gold); letter-spacing: 0.03em; }
       `}</style>
     </div>
   );
