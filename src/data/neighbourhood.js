@@ -36,9 +36,9 @@ export const CONNECTIVITY_PLACES = [
   { id: 'thane',         name: 'Thane',                  category: 'city',    coords: [72.9781, 19.2183],     distance: '79 km',          time: '2h',     note: 'Via NH-160' },
   { id: 'nashik',        name: 'Nashik',                 category: 'city',    coords: [73.7898, 19.9975],     distance: '68 km',          time: '1h 30m', note: 'Wine capital' },
   { id: 'igatpuri',      name: 'Igatpuri',               category: 'hill',    coords: [73.5620, 19.6953],     distance: '22 km',          time: '30 min', note: 'Nearest hill town' },
-  { id: 'mn-highway',    name: 'Mumbai–Nashik Highway',  category: 'highway', coords: [73.4790, 19.6380],     distance: '2 km',           time: '5 min',  note: 'NH-160 access' },
+  { id: 'mn-highway',    name: 'Mumbai–Nashik Highway',  category: 'highway', coords: [73.3967640732647, 19.602327300429792],     distance: '2 km',           time: '5 min',  note: 'NH-160 access' },
   { id: 'kasara-stn',    name: 'Kasara Railway Station', category: 'station', coords: [73.4836, 19.6403],     distance: '2 km',           time: '10 min', note: 'Central Line terminus' },
-  { id: 'samruddhi',     name: 'Samruddhi Expressway',   category: 'highway', coords: [73.461891, 19.634989], distance: 'Well Connected', time: '5 min',  note: 'Mumbai–Nagpur corridor' },
+  { id: 'samruddhi',     name: 'Samruddhi Expressway',   category: 'highway', coords: [73.57188377178176, 19.671123783775986], distance: 'Well Connected', time: '20 min',  note: 'Mumbai–Nagpur corridor' },
   { id: 'nmia',          name: 'Navi Mumbai Airport',    category: 'airport', coords: [73.0657, 18.9914],     distance: '100 km',         time: '2h 45m', note: 'Upcoming (NMIA)' },
 ];
 
@@ -56,6 +56,40 @@ export const TOURIST_SPOTS = [
   { id: 'mahuli',      name: 'Mahuli Fort',          category: 'fort',      coords: [73.2496, 19.4903], distance: '52.9 km', time: '1h 10m', note: 'Trekking fort' },
 ];
 
+// Journey waypoints along each route TO the site (real toll/tunnel/bridge/landmark points).
+// Kept as a map keyed by place id (instead of bloating the aligned tables above).
+// `progress` = fraction along the OSRM route (0 = origin, 1 = Belle Vue) — sensible
+// approximations; nudge any that sit off the real feature once a route renders.
+// type ∈ 'toll' | 'tunnel' | 'bridge' | 'landmark'. Short hops + tourist spots are empty for now.
+export const ROUTE_WAYPOINTS = {
+  mumbai: [
+    { name: 'Vadape Toll Plaza',  type: 'toll',     progress: 0.22 },
+    { name: 'Kasara Ghat',        type: 'landmark', progress: 0.78 },
+    { name: 'Kasara Ghat Bridge', type: 'bridge',   progress: 0.86 },
+  ],
+  thane: [
+    { name: 'Vadape Toll Plaza',   type: 'toll',   progress: 0.30 },
+    { name: 'Bhatsa River Bridge', type: 'bridge', progress: 0.74 },
+  ],
+  nashik: [
+    { name: 'Ghoti Toll Plaza', type: 'toll',     progress: 0.35 },
+    { name: 'Kasara Ghat',      type: 'landmark', progress: 0.70 },
+  ],
+  igatpuri: [
+    { name: 'Kasara Ghat', type: 'landmark', progress: 0.45 },
+    { name: 'Padli Toll',  type: 'toll',     progress: 0.72 },
+  ],
+  nmia: [
+    { name: 'Samruddhi Expressway Toll', type: 'toll',   progress: 0.30 },
+    { name: 'Vasind Rail Overbridge',    type: 'bridge', progress: 0.58 },
+    { name: 'Vadape Toll Plaza',         type: 'toll',   progress: 0.80 },
+  ],
+  // samruddhi: [
+  //   { name: 'Samruddhi Expressway Toll', type: 'toll', progress: 0.50 },
+  // ],
+  // mn-highway, kasara-stn (2 km hops) and all TOURIST_SPOTS: intentionally empty for now.
+};
+
 // Tours for the "Play Journey" fly-through (camera visits each, total ~5s).
 export const TOURS = {
   tourist:      { id: 'tourist',      label: 'Scenic Tourist Tour', places: TOURIST_SPOTS },
@@ -66,4 +100,4 @@ export const TOURS = {
 export const ALL_PLACES = [PROJECT, ...CONNECTIVITY_PLACES, ...TOURIST_SPOTS];
 export const findPlace = (id) => ALL_PLACES.find((p) => p.id === id) || null;
 
-export default { PROJECT, CONNECTIVITY_PLACES, TOURIST_SPOTS, TOURS, CATEGORY_META, ALL_PLACES, findPlace };
+export default { PROJECT, CONNECTIVITY_PLACES, TOURIST_SPOTS, TOURS, CATEGORY_META, ALL_PLACES, findPlace, ROUTE_WAYPOINTS };
