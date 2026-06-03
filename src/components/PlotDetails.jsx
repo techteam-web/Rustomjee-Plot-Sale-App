@@ -116,7 +116,7 @@ export default function PlotDetails({ plot, onClose }) {
         @media (max-width: 1024px) {
           #panel {
             position: fixed; top: 64px; right: 0; bottom: 0; height: calc(100vh - 64px);
-            border-left: none; box-shadow: -5px 0 20px rgba(0,0,0,0.5);
+            border-left: 1px solid var(--gold-b); box-shadow: none;
           }
           #panel.open { width: 100%; min-width: 100%; }
         }
@@ -126,20 +126,20 @@ export default function PlotDetails({ plot, onClose }) {
         .phx { position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; background: var(--card-bg); border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--brand-gold); z-index: 2; transition: all 0.3s; }
         .phx:hover { background: var(--brand-gold); color: var(--on-gold); }
         .pht { padding-right: 40px; }
-        .phn { font-size: 20px; font-weight: 700; color: var(--text-primary); position: relative; z-index: 1; margin-bottom: 2px; }
+        .phn { font-size: 20px; color: var(--text-primary); position: relative; z-index: 1; margin-bottom: 2px; }
         .php { font-size: 10px; color: var(--brand-gold); text-transform: uppercase; letter-spacing: 0.1em; position: relative; z-index: 1; }
         .pb { padding: 16px; display: flex; flex-direction: column; flex: 1; min-height: 0; }
         .ps { border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 14px; }
         .ps-amen { flex: 1 1 auto; min-height: 200px; display: flex; flex-direction: column; }
         .ps-actions { flex-shrink: 0; }
-        .pst { font-size: 9px; letter-spacing: 0.2em; color: var(--brand-gold); margin-bottom: 12px; font-weight: 700; }
-        .sbadge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 700; border: 1px solid var(--border); margin-bottom: 16px; }
-        .sbadge.available { color: var(--brand-green); border-color: rgba(181, 209, 141, 0.3); background: rgba(181, 209, 141, 0.05); }
-        .sbadge.sold { color: var(--gray); border-color: var(--border); }
-        .sbadge.reserved { color: var(--brand-gold); border-color: var(--gold-b); background: var(--gold-p); }
+        .pst { font-size: 9px; letter-spacing: 0.2em; color: var(--brand-gold); margin-bottom: 12px; font-weight: 400; }
+        .sbadge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 400; border: 1px solid var(--border); margin-bottom: 16px; }
+        .sbadge.available { color: var(--status-available); border-color: var(--gold-b); background: var(--gold-p); }
+        .sbadge.sold { color: var(--status-sold); border-color: var(--border); }
+        .sbadge.reserved { color: var(--status-reserved); border-color: var(--gold-b); background: var(--gold-p); }
         .sbdot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
         .pbox { background: var(--bg-secondary); padding: 14px; display: flex; align-items: center; justify-content: space-between; margin-top: 4px; border: 1px solid var(--gold-b); }
-        .pmain { font-size: 22px; color: var(--text-primary); font-weight: 700; }
+        .pmain { font-size: 22px; color: var(--text-primary); }
         .ppsf { font-size: 9px; color: var(--text-muted); margin-top: 3px; }
         .ppi-l { font-size: 9px; color: var(--brand-gold); letter-spacing: 0.1em; }
         .ppi-v { font-size: 14px; color: var(--text-secondary); margin-top: 4px; }
@@ -151,10 +151,10 @@ export default function PlotDetails({ plot, onClose }) {
         .tot { color: var(--brand-gold) !important; font-size: 14px !important; }
         .dgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .di-l { font-size: 8px; color: var(--text-muted); letter-spacing: 0.1em; margin-bottom: 3px; }
-        .di-v { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+        .di-v { font-size: 12px; font-weight: 400; color: var(--text-primary); }
         .gold { color: var(--brand-gold) !important; }
         .amen-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 6px; }
-        .amen-count { color: var(--text-muted); font-weight: 600; letter-spacing: 0; }
+        .amen-count { color: var(--text-muted); font-weight: 400; letter-spacing: 0; }
         .amrow { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); }
         .amrow:last-child { border-bottom: none; }
         .aml { display: flex; align-items: center; gap: 10px; flex: 1; }

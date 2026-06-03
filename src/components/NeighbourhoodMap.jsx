@@ -159,7 +159,6 @@ const placeFeatures = ALL_PLACES.map((p) => ({
 
 export default function NeighbourhoodMap({
   theme,
-  mapType,
   selectedPlace,
   tour,
   tourPlayToken,
@@ -173,7 +172,6 @@ export default function NeighbourhoodMap({
   const homeZoomRef = useRef(HOME_CAMERA.zoom); // responsive home zoom (recomputed for the current map width)
 
   const themeRef = useRef(theme);
-  const mapTypeRef = useRef(mapType);
   const selectedPlaceRef = useRef(selectedPlace);
   const tourRef = useRef(tour);
   const onTourStepRef = useRef(onTourStep);
@@ -193,7 +191,6 @@ export default function NeighbourhoodMap({
   const pulseRafRef = useRef(null); // breathing-glow animation on the route halo
 
   useEffect(() => { themeRef.current = theme; }, [theme]);
-  useEffect(() => { mapTypeRef.current = mapType; }, [mapType]);
   useEffect(() => { selectedPlaceRef.current = selectedPlace; }, [selectedPlace]);
   useEffect(() => { tourRef.current = tour; }, [tour]);
   useEffect(() => { onTourStepRef.current = onTourStep; }, [onTourStep]);
@@ -202,9 +199,8 @@ export default function NeighbourhoodMap({
 
   const getStyle = () => {
     const key = import.meta.env.VITE_MAPTILER_KEY;
-    if (mapTypeRef.current === 'satellite')
-      return `https://api.maptiler.com/maps/hybrid/style.json?key=${key}`;
-    return `https://api.maptiler.com/maps/landscape/style.json?key=${key}`;
+    // Satellite-only (this view was always satellite; raster removed project-wide).
+    return `https://api.maptiler.com/maps/hybrid/style.json?key=${key}`;
   };
 
   const cancelTour = () => {
@@ -551,9 +547,10 @@ export default function NeighbourhoodMap({
         const f = e.features && e.features[0];
         if (!f) return;
         const meta = CATEGORY_META[f.properties.category];
+        const titleColor = themeRef.current === 'dark' ? '#9FCAD6' : '#1A3A4A';
         popup.setLngLat(f.geometry.coordinates).setHTML(
           `<div style="font-family:'Inter',sans-serif;padding:4px 2px;min-width:130px">
-             <div style="font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:#CE9A52">${f.properties.name}</div>
+             <div style="font-family:'Cormorant Garamond',serif;font-size:14px;font-weight:500;color:${titleColor}">${f.properties.name}</div>
              <div style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#999;margin-top:2px">${meta ? meta.label : ''}${f.properties.distance ? ' · ' + f.properties.distance : ''}</div>
            </div>`
         ).addTo(map);
@@ -599,15 +596,8 @@ export default function NeighbourhoodMap({
     };
   }, []);
 
-  // Theme / map-type change → swap base style (layers re-added on style.load).
-  // A style swap tears down + rebuilds all sources (incl. 'route'), so stop any
-  // in-flight fly-along first — otherwise it keeps driving a vanished route source.
-  useEffect(() => {
-    if (mapRef.current) {
-      cancelFlyAlong();
-      mapRef.current.setStyle(getStyle());
-    }
-  }, [theme, mapType]);
+  // (Theme/map-type style-swap effect removed — satellite-only, and this view's layers
+  // don't read theme. The hover popup reads themeRef live; no setStyle needed.)
 
   // Stop pressed (playing → false) → halt the tour + clear a deferred play.
   // cancelFlyAlong() is defensive: a single-place fly-along never runs while

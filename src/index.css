@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500&family=Sorts+Mill+Goudy:ital@0;1&display=swap');
 @import "tailwindcss";
 
 /* Custom breakpoints (Tailwind v4). Extends the defaults (sm 640 · md 768 ·
@@ -12,61 +12,83 @@
 }
 
 :root {
-  /* Brand Primary Colors (Consistent across themes) */
+  /* Brand accent — Rustomjee gold (warm metallic) */
   --brand-gold: #CE9A52;
-  --brand-gold-dark: #b38541;
+  --brand-gold-dark: #B3863E;
   --brand-beige: #DAD4C6;
-  
-  /* Status Colors (Consistent) */
-  --status-available: #B5D18D;
-  --status-sold: #8A93A6;
-  --status-reserved: var(--brand-gold);
+  /* Availability — calm, in-palette */
+  --status-available: #5E7B53;
+  --status-reserved:  #B58A4A;
+  --status-sold:      #9A8E78;
 }
 
-/* Dark Theme (Default) */
-[data-theme='dark'] {
-  --bg-primary: #2D343E; /* Deep Slate */
-  --bg-secondary: #242A32;
-  --text-primary: #FFFFFF;
-  --text-secondary: #B4BCC9; /* Muted Slate */
-  --text-muted: #8A93A6;
-  --border-color: rgba(255, 255, 255, 0.08);
-  --glass-bg: rgba(45, 52, 62, 0.9);
-  --panel-bg: #2D343E;
-  --card-bg: rgba(255, 255, 255, 0.04);
-  --gold-p: rgba(206, 154, 82, 0.12);
-  --gold-b: rgba(206, 154, 82, 0.3);
-  --on-gold: #FFFFFF;
-  --brand-black: #242A32;
-}
-
-/* Light Theme */
+/* Light Theme — "Architectural Paper" (DEFAULT, the floorplan aesthetic) */
 [data-theme='light'] {
-  --bg-primary: #F5F7F9; /* Soft Off-White */
-  --bg-secondary: #EBEDF0;
-  --text-primary: #2D343E; /* Deep Slate Text */
-  --text-secondary: #4C586B; /* Primary Slate */
-  --text-muted: #6B778C; 
-  --border-color: rgba(76, 88, 107, 0.12);
-  --glass-bg: rgba(245, 247, 249, 0.95);
-  --panel-bg: #FFFFFF;
-  --card-bg: rgba(76, 88, 107, 0.03);
-  --gold-p: rgba(181, 134, 62, 0.1);
-  --gold-b: rgba(181, 134, 62, 0.25);
-  --on-gold: #FFFFFF;
-  --brand-gold: #B3863E;
-  --brand-black: #EBEDF0;
+  --bg-primary: #F4EFE4;            /* bone — canvas            */
+  --bg-secondary: #EAE2D0;          /* parchment — sidebar/panels */
+  --panel-bg: #FBF8F1;              /* raised paper — cards/modal */
+  --card-bg: rgba(28,26,20,0.035);  /* faint warm wash for rows  */
+  --text-primary: #1C1A14;          /* ink (warm near-black)     */
+  --text-secondary: #5A5447;        /* graphite                  */
+  --text-muted: #8A8170;
+  --border-color: rgba(28,26,20,0.12);
+  --glass-bg: rgba(244,239,228,0.92);
+  --brand-gold: #CE9A52;            /* Rustomjee gold            */
+  --brand-gold-dark: #B3863E;
+  --champagne: #CDB389;             /* metallic spark            */
+  --gold-p: rgba(206,154,82,0.10);
+  --gold-b: rgba(206,154,82,0.26);
+  --on-gold: #1C1A14;               /* dark ink on the lighter gold (legibility) */
+  --status-available: #5E7B53;
+  --status-reserved: #B58A4A;
+  --status-sold: #9A8E78;
+  --brand-black: #EAE2D0;           /* legacy name → parchment   */
+}
+
+/* Dark Theme — "Nocturne" (warm twin of the paper, not cold-blue) */
+[data-theme='dark'] {
+  --bg-primary: #1A1611;            /* espresso — canvas         */
+  --bg-secondary: #221D17;          /* warm umber — panels       */
+  --panel-bg: #1A1611;
+  --card-bg: rgba(244,239,228,0.045);
+  --text-primary: #F4EFE4;          /* bone text                 */
+  --text-secondary: #B8AE9C;
+  --text-muted: #857C6C;
+  --border-color: rgba(244,239,234,0.10);
+  --glass-bg: rgba(26,22,17,0.88);
+  --brand-gold: #E0C9A0;            /* light champagne reads on espresso */
+  --brand-gold-dark: #C7AF82;
+  --champagne: #EAD9B8;
+  --gold-p: rgba(224,201,160,0.12);
+  --gold-b: rgba(224,201,160,0.28);
+  --on-gold: #1A1611;
+  --status-available: #7FA06E;
+  --status-reserved: #CBA463;
+  --status-sold: #8A8070;
+  --brand-black: #221D17;
 }
 
 :root {
-  --brand-gold: #CE9A52;
-  /* Alias variables for components */
+  /* Alias variables for components — names unchanged */
   --white: var(--text-primary);
   --cream: var(--text-secondary);
   --gray: var(--text-muted);
   --border: var(--border-color);
   --gold: var(--brand-gold);
-  --gold-l: #e0ae55;
+  --gold-l: var(--champagne);
+  /* Repointed previously-undefined vars (audit) */
+  --brand-white: var(--text-muted);
+  --brand-green: var(--status-available);
+
+  /* Spacing scale (use instead of per-component hardcoded px) */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 20px; --s-5: 32px; --s-6: 48px;
+  /* Radii — near-zero (pills may use --r-sm) */
+  --r-0: 0px; --r-sm: 2px;
+  /* Fluid type — scales to 4K */
+  --fs-label: clamp(9px, 0.55vw, 12px);
+  --fs-body: clamp(13px, 0.8vw, 16px);
+  --fs-num: clamp(20px, 1.6vw, 34px);
+  --fs-display: clamp(26px, 2.2vw, 46px);
 }
 
 * {
@@ -76,7 +98,7 @@
 }
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Sora', sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
   overflow: hidden;
@@ -84,19 +106,49 @@ body {
   transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
 }
 
+/* Material warmth — ONE barely-there overlay (paper grain on light, a touch
+   warmer/filmic on dark). pointer-events:none so it never blocks interaction;
+   remove this rule if it ever reads as noise. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.04;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+[data-theme='dark'] body::before {
+  opacity: 0.05;
+  mix-blend-mode: screen;
+}
+
 div, header, sidebar, section, button, span, nav {
   transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out, color 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
 }
 
 h1, h2, h3, .headline {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Sora', sans-serif;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.16em;
+  font-weight: 300;
 }
 
-.subhead {
-  font-family: 'Libre Baskerville', serif; /* Serif like Goudy */
+/* Goudy Old Style (brand serif) for title / number moments — overrides .headline.
+   Sorts Mill Goudy ships a single 400 weight, so serif moments are always 400. */
+.brand-name, .mptitle, .phn, .pmain, .sv, .plp {
+  font-family: 'Sorts Mill Goudy', serif;
+  text-transform: none;
+  letter-spacing: 0.005em;
+  font-weight: 400;
+}
+
+.subhead, .php {
+  font-family: 'Sorts Mill Goudy', serif;
   font-style: italic;
+  font-weight: 400;
+  text-transform: none;
 }
 
 /* Scrollbar */
@@ -105,7 +157,7 @@ h1, h2, h3, .headline {
 }
 ::-webkit-scrollbar-thumb {
   background: var(--gold-b);
-  border-radius: 4px;
+  border-radius: var(--r-sm);
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--gold);
@@ -126,7 +178,8 @@ h1, h2, h3, .headline {
 
 /* Premium Brand Elements */
 .brand-frame {
-  border: 1px solid var(--brand-gold);
+  border: 1px solid var(--gold-b);
+  box-shadow: none;
   padding: 2px;
   position: relative;
 }
@@ -135,52 +188,41 @@ h1, h2, h3, .headline {
   content: '';
   position: absolute;
   inset: 4px;
-  border: 0.5px solid var(--brand-gold);
+  border: 0.5px solid var(--gold-b);
   pointer-events: none;
 }
 
 .btn-brand {
-  font-family: 'Inter', sans-serif;
-  font-weight: 500;
+  font-family: 'Sora', sans-serif;
+  font-weight: 400;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.15em;
   padding: 10px 24px;
-  border: 1px solid var(--text-secondary);
+  border: 1px solid var(--gold-b);
+  border-radius: var(--r-0);
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .btn-brand:hover {
-  background: var(--text-secondary);
-  color: var(--bg-primary);
+  background: var(--gold-p);
+  color: var(--text-primary);
 }
 
-.btn-brand.primary {
-  background: var(--text-secondary);
-  color: var(--bg-primary);
-  border-color: var(--text-secondary);
-  font-weight: 600;
-}
-
-.btn-brand.primary:hover {
-  background: var(--text-primary);
-}
-
-/* Specific Gold Accents for Luxury Highlights */
-.gold-accent {
-  color: var(--brand-gold) !important;
-  border-color: var(--brand-gold) !important;
-}
-
-.btn-brand.gold {
-  border-color: var(--brand-gold);
-  color: var(--brand-gold);
-}
-
-.btn-brand.gold:hover {
+.btn-brand.primary, .btn-brand.gold {
   background: var(--brand-gold);
+  color: var(--on-gold);
+  border-color: var(--brand-gold);
+}
+
+.btn-brand.primary:hover, .btn-brand.gold:hover {
+  background: var(--brand-gold-dark);
   color: var(--on-gold);
 }
 
+/* Specific accent highlights */
+.gold-accent {
+  color: var(--brand-gold);
+}

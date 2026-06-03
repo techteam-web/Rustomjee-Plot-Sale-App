@@ -19,8 +19,7 @@ function App() {
   const [sizeChip, setSizeChip] = useState('all');
   const [viewMode, setViewMode] = useState('3D');
   const [showMasterplan, setShowMasterplan] = useState(false);
-  const [theme, setTheme] = useState('dark');
-  const [mapType, setMapType] = useState('satellite');
+  const [theme, setTheme] = useState('light');
   const [selectedConnectivity, setSelectedConnectivity] = useState(null);
   const [activeZone, setActiveZone] = useState(null);
   const [plotElevations, setPlotElevations] = useState({});
@@ -139,7 +138,7 @@ function App() {
       />
 
       {loading ? (
-        <div style={{flex:1, display:'flex', alignItems:'center', justifyContent:'center'}}>
+        <div style={{flex:1, display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg-primary)'}}>
           <div className="headline" style={{color:'var(--brand-gold)'}}>Loading plots…</div>
         </div>
       ) : page === 'explore' ? (
@@ -155,7 +154,6 @@ function App() {
           />
           <NeighbourhoodMap
             theme={theme}
-            mapType={mapType}
             selectedPlace={selectedPlace}
             tour={activeTour}
             tourPlayToken={tourPlayToken}
@@ -180,8 +178,6 @@ function App() {
             onPlotClick={(p) => handleSelectPlot(p ? p.name : null)}
             viewMode={viewMode}
             setViewMode={setViewMode}
-            mapType={mapType}
-            setMapType={setMapType}
             theme={theme}
             selectedConnectivity={selectedConnectivity}
             setSelectedConnectivity={handleSelectConnectivity}
@@ -196,7 +192,6 @@ function App() {
             activePlot={activePlot}
             onPlotClick={(p) => handleSelectPlot(p ? p.name : null)}
             viewMode={viewMode}
-            mapType={mapType}
             theme={theme}
             selectedConnectivity={selectedConnectivity}
             activeZone={activeZone}

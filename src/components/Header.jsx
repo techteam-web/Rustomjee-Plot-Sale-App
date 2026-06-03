@@ -33,7 +33,7 @@ export default function Header({ theme, onToggleTheme, onShowMasterplan, onOpenR
         .navlink {
           background: transparent; border: none; cursor: pointer; position: relative;
           font-family: 'Inter', sans-serif; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
-          font-weight: 500; color: var(--text-muted); padding: 8px 16px; transition: color 0.3s ease;
+          font-weight: 300; color: var(--text-muted); padding: 8px 16px; transition: color 0.3s ease;
         }
         .navlink::after {
           content: ''; position: absolute; left: 16px; right: 16px; bottom: 2px; height: 1px;
@@ -43,11 +43,11 @@ export default function Header({ theme, onToggleTheme, onShowMasterplan, onOpenR
         .navlink.on { color: var(--brand-gold); }
         .navlink.on::after { transform: scaleX(1); }
         .brand-tagline { 
-          font-family: 'Inter', sans-serif; font-size: 10px; letter-spacing: 0.2em; 
+          font-family: 'Inter', sans-serif; font-size: 10px; letter-spacing: 0.2em; font-weight: 300; 
           text-transform: uppercase; color: var(--brand-white); opacity: 0.8;
         }
         .brand-name { 
-          font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; 
+          font-size: 20px; 
           color: var(--text-primary); letter-spacing: 0.02em;
         }
         .hdr-mid {
@@ -70,7 +70,11 @@ export default function Header({ theme, onToggleTheme, onShowMasterplan, onOpenR
           .hbtn-brand { padding: 6px 12px; font-size: 9px; }
         }
         @media (max-width: 560px) {
-          .hdr-nav { display: none; }
+          /* Keep nav reachable on phones: compact segmented control, header stays 64px */
+          .brand-tagline { display: none; }
+          .hbtn-brand { display: none; }
+          .hdr-nav { position: static; transform: none; gap: 0; margin-left: 8px; }
+          .navlink { font-size: 10px; letter-spacing: 0.12em; font-weight: 300; padding: 8px 10px; }
         }
         .theme-toggle:hover { background: var(--gold-p); }
         .hbtn-brand {
@@ -80,7 +84,7 @@ export default function Header({ theme, onToggleTheme, onShowMasterplan, onOpenR
           font-family: 'Inter', sans-serif;
         }
         .hbtn-brand:hover { border-color: var(--brand-gold); color: var(--brand-gold); }
-        .hbtn-brand.primary { background: var(--brand-gold); border-color: var(--brand-gold); color: var(--bg-primary); font-weight: 600; }
+        .hbtn-brand.primary { background: var(--brand-gold); border-color: var(--brand-gold); color: var(--bg-primary); }
         .hbtn-brand.primary:hover { background: var(--brand-gold-dark); }
       `}</style>
     </header>
