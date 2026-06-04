@@ -7,8 +7,9 @@
 //   - gate non-essential motion behind `prefers-reduced-motion`
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
+import { SplitText } from 'gsap/SplitText';
 
-gsap.registerPlugin(useGSAP);
+gsap.registerPlugin(useGSAP, SplitText);
 
 // Honour the OS "reduce motion" setting once, app-wide.
 export const prefersReducedMotion =
@@ -16,4 +17,4 @@ export const prefersReducedMotion =
   window.matchMedia &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-export { gsap, useGSAP };
+export { gsap, useGSAP, SplitText };
