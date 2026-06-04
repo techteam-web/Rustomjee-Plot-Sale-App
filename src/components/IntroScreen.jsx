@@ -14,7 +14,7 @@ import { gsap, useGSAP, SplitText, prefersReducedMotion } from '../lib/Gsapconfi
 const SEGMENTS = [
   { heading: 'A Life Above the Ordinary', sub: 'Kasara Hill Estates, Rustomjee' },
   { heading: 'Where Nature Meets Refinement', sub: 'Private Hill Residences · Western Ghats' },
-  { heading: 'Belle Vie', sub: 'The Beautiful Life' },
+  { heading: 'Belle Vue', sub: 'The Beautiful Life' },
 ];
 
 const DESIGN_TOTAL = 14;     // seconds the timings below are authored against
