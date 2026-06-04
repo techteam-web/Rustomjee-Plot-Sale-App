@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar';
 import Map from './components/Map';
 import PlotDetails from './components/PlotDetails';
 import MasterplanModal from './components/MasterplanModal';
+import IntroScreen from './components/IntroScreen';
 import NeighbourhoodPanel from './components/NeighbourhoodPanel';
 import NeighbourhoodMap from './components/NeighbourhoodMap';
 import { STATUS_LIST, SOLD_NAMES, AMEN } from './data/plots';
@@ -11,6 +12,8 @@ import { calcPrice } from './utils';
 
 function App() {
   const [page, setPage] = useState('home');
+  // Play the video intro on every load / reload (no once-per-session skip).
+  const [showIntro, setShowIntro] = useState(true);
   const [processedPlots, setProcessedPlots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activePlot, setActivePlot] = useState(null);
@@ -80,6 +83,9 @@ function App() {
   }, [theme]);
 
   const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
+
+  // Intro finished fading out — reveal the app.
+  const handleIntroComplete = () => setShowIntro(false);
 
   // Plot and connectivity views are mutually exclusive — selecting one clears the other
   // so their camera animations never fight and no stale highlight lingers.
@@ -206,10 +212,12 @@ function App() {
       )}
 
       <MasterplanModal
-        show={showMasterplan} 
-        onClose={() => setShowMasterplan(false)} 
+        show={showMasterplan}
+        onClose={() => setShowMasterplan(false)}
         theme={theme}
       />
+
+      {showIntro && <IntroScreen onComplete={handleIntroComplete} />}
 
       <style>{`
         #app { display: flex; height: 100vh; padding-top: 64px; flex-direction: row; }
