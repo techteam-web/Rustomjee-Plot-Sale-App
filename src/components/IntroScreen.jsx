@@ -232,7 +232,7 @@ export default function IntroScreen({ onComplete }) {
   const handleEnter = () => { if (exitRef.current) exitRef.current(); };
 
   return (
-    <div ref={rootRef} className="intro-root" aria-label="Belle Vie intro">
+    <div ref={rootRef} className="intro-root" aria-label="Belle Vue intro">
       <video
         ref={setVideoRef}
         className="intro-video"
