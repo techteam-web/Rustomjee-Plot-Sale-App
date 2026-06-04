@@ -1,16 +1,17 @@
 import React from 'react';
 import { Sun, Moon } from 'lucide-react';
 
-export default function Header({ theme, onToggleTheme, onShowMasterplan, onOpenROI, page = 'home', setPage = () => {} }) {
+export default function Header({ theme, onToggleTheme, onShowMasterplan, onOpenROI, currentView = 'home', onNavigate = () => {} }) {
   return (
     <header id="hdr">
-      <div className="logo" onClick={() => setPage('home')} role="button" title="Back to home">
+      <div className="logo" onClick={() => onNavigate('home')} role="button" title="Back to home">
         <div className="brand-tagline">IT'S THOUGHTFUL. IT'S</div>
         <div className="brand-name">Rustomjee</div>
       </div>
       <nav className="hdr-nav">
-        <button className={`navlink ${page === 'home' ? 'on' : ''}`} onClick={() => setPage('home')}>Home</button>
-        <button className={`navlink ${page === 'explore' ? 'on' : ''}`} onClick={() => setPage('explore')}>Neighbourhood</button>
+        <button className={`navlink ${currentView === 'home' ? 'on' : ''}`} onClick={() => onNavigate('home')}>Home</button>
+        <button className={`navlink ${currentView === 'plot' ? 'on' : ''}`} onClick={() => onNavigate('plot')}>Plot</button>
+        <button className={`navlink ${currentView === 'explore' ? 'on' : ''}`} onClick={() => onNavigate('explore')}>Neighbourhood</button>
       </nav>
       <div className="hdr-r">
         <button className="theme-toggle" onClick={onToggleTheme} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
@@ -37,10 +38,10 @@ export default function Header({ theme, onToggleTheme, onShowMasterplan, onOpenR
         }
         .navlink::after {
           content: ''; position: absolute; left: 16px; right: 16px; bottom: 2px; height: 1px;
-          background: var(--brand-gold); transform: scaleX(0); transform-origin: left; transition: transform 0.35s ease;
+          background: var(--text-primary); transform: scaleX(0); transform-origin: left; transition: transform 0.35s ease;
         }
         .navlink:hover { color: var(--text-primary); }
-        .navlink.on { color: var(--brand-gold); }
+        .navlink.on { color: var(--text-primary); }
         .navlink.on::after { transform: scaleX(1); }
         .brand-tagline { 
           font-family: 'Inter', sans-serif; font-size: 10px; letter-spacing: 0.2em; font-weight: 300; 

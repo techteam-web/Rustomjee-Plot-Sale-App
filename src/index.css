@@ -22,27 +22,27 @@
   --status-sold:      #9A8E78;
 }
 
-/* Light Theme — "Architectural Paper" (DEFAULT, the floorplan aesthetic) */
+/* Light Theme — "Cloud Paper" (DEFAULT, soft cloudy off-white + slate ink) */
 [data-theme='light'] {
-  --bg-primary: #F4EFE4;            /* bone — canvas            */
-  --bg-secondary: #EAE2D0;          /* parchment — sidebar/panels */
-  --panel-bg: #FBF8F1;              /* raised paper — cards/modal */
-  --card-bg: rgba(28,26,20,0.035);  /* faint warm wash for rows  */
-  --text-primary: #1C1A14;          /* ink (warm near-black)     */
-  --text-secondary: #5A5447;        /* graphite                  */
-  --text-muted: #8A8170;
-  --border-color: rgba(28,26,20,0.12);
-  --glass-bg: rgba(244,239,228,0.92);
+  --bg-primary: #DDE0E3;            /* soft light grey — canvas   */
+  --bg-secondary: #D3D7DB;          /* deeper grey — sidebar/panels */
+  --panel-bg: #E9ECEF;              /* raised grey — cards/modal  */
+  --card-bg: rgba(44,58,74,0.05);   /* faint slate wash for rows  */
+  --text-primary: #232E39;          /* slate-navy ink (near-black) */
+  --text-secondary: #3C4753;        /* dark slate                */
+  --text-muted: #6B7682;
+  --border-color: rgba(44,58,74,0.16);
+  --glass-bg: rgba(221,224,227,0.92);
   --brand-gold: #CE9A52;            /* Rustomjee gold            */
   --brand-gold-dark: #B3863E;
   --champagne: #CDB389;             /* metallic spark            */
   --gold-p: rgba(206,154,82,0.10);
   --gold-b: rgba(206,154,82,0.26);
-  --on-gold: #1C1A14;               /* dark ink on the lighter gold (legibility) */
+  --on-gold: #2B3947;               /* slate ink on the lighter gold (legibility) */
   --status-available: #5E7B53;
   --status-reserved: #B58A4A;
   --status-sold: #9A8E78;
-  --brand-black: #EAE2D0;           /* legacy name → parchment   */
+  --brand-black: #D3D7DB;           /* legacy name → deeper grey */
 }
 
 /* Dark Theme — "Nocturne" (warm twin of the paper, not cold-blue) */

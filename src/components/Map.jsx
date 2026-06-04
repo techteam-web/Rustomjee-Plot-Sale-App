@@ -183,6 +183,27 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, theme, s
         }
       });
     }
+    // Two white ring layers that pulse outward from the selected plot, phase-offset
+    // by half a cycle for a continuous heartbeat. Added on top of plots-circle (no
+    // beforeId) so the rings are never occluded by neighbouring dots; the number
+    // labels are added after this, so they still sit above the rings. Filter +
+    // animation are driven from the highlight effect; idle = no-match filter.
+    ['plots-pulse', 'plots-pulse-2'].forEach((id) => {
+      if (!map.getLayer(id)) {
+        map.addLayer({
+          id, type: 'circle', source: 'plots',
+          filter: ['==', ['get', 'name'], '__none__'],
+          paint: {
+            'circle-radius': 6,
+            'circle-color': 'rgba(255,255,255,0)', // ring only — no fill
+            'circle-opacity': 0,
+            'circle-stroke-color': '#FFFFFF',
+            'circle-stroke-width': 3,
+            'circle-stroke-opacity': 0,
+          }
+        });
+      }
+    });
 
     // Connectivity line layer (actual road routing)
     if (!map.getSource('connectivity')) {
@@ -613,40 +634,167 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, theme, s
     }
   }, [activePlot, plots]);
 
-  // Update highlights and visual states
+  // Update highlights and visual states.
+  // NOTE: the "markers" are MapLibre WebGL layers, not DOM elements — so the selected
+  // highlight system (dim others / invert selected to white+gold / pulse rings) is
+  // expressed as paint on plots-circle + the label/pulse layers, all keyed off the
+  // existing activePlot. No map-init / clustering / camera code is touched here.
   useEffect(() => {
     if (!mapRef.current || !mapRef.current.isStyleLoaded()) return;
     const map = mapRef.current;
 
-    // Base curves (must match the plots-circle paint above) so non-selected plots keep the
-    // zoom-scaled white ring; selected plot gets the brand-gold ring + a size bump.
-    const baseRadius = ['interpolate', ['linear'], ['zoom'], 13, 2.5, 15, 4.5, 16, 7, 17, 10, 18, 13, 19, 16, 20, 19];
-    const baseStrokeW = ['interpolate', ['linear'], ['zoom'], 14, 1, 18, 1.75, 20, 2.25];
     const isSel = ['==', ['get', 'name'], activePlot || '__none__'];
+    const SEL_SCALE = 1.45; // selected dot scale, on top of the zoom baseline
 
-    // Selected plot: gold ring, +4 radius. Others: new white-ring base.
-    map.setPaintProperty('plots-circle', 'circle-radius', ['case', isSel, ['+', baseRadius, 4], baseRadius]);
+    // Existing per-status fill — UNCHANGED for non-selected plots; only the selected
+    // plot is overridden to white below. (Data-only expression — no zoom — so valid.)
+    const baseColor = ['case',
+      ['==', ['get', 'category'], 'saleable'], ['case',
+        ['==', ['get', 'status'], 'sold'], '#9A8E78',
+        ['==', ['get', 'status'], 'reserved'], '#B58A4A',
+        '#4E6B45'
+      ],
+      ['in', ['get', 'category'], ['literal', ['park', 'garden', 'playground']]], '#6E8A5A',
+      ['==', ['get', 'category'], 'clubhouse'], '#B89B6B',
+      '#8A8170',
+    ];
+
+    // Zoom→size baselines (match the plots-circle paint). MapLibre allows only ONE
+    // top-level zoom interpolate per expression, so per-feature selection is folded into
+    // the interpolate's stop OUTPUTS (a composite expression) — never a zoom curve wrapped
+    // inside ['case', …], which throws.
+    const RADIUS_STOPS = [[13, 2.5], [15, 4.5], [16, 7], [17, 10], [18, 13], [19, 16], [20, 19]];
+    const STROKE_STOPS = [[14, 1], [18, 1.75], [20, 2.25]];
+    const composite = (stops, selFn, otherFn) => {
+      const expr = ['interpolate', ['linear'], ['zoom']];
+      stops.forEach(([z, v]) => { expr.push(z, ['case', isSel, selFn(v), otherFn(v)]); });
+      return expr;
+    };
+
+    // Smooth the paint changes like CSS transitions (GL paint transitions). plots-circle
+    // ONLY — never the pulse layers, whose radius/opacity are driven per frame.
+    map.setPaintProperty('plots-circle', 'circle-radius-transition', { duration: 300 });
+    map.setPaintProperty('plots-circle', 'circle-color-transition', { duration: 250 });
+    map.setPaintProperty('plots-circle', 'circle-stroke-color-transition', { duration: 250 });
+    map.setPaintProperty('plots-circle', 'circle-opacity-transition', { duration: 350 });
+    map.setPaintProperty('plots-circle', 'circle-stroke-opacity-transition', { duration: 350 });
+
+    // --- Layer 2: selected plot inverts to a white fill + gold ring, scaled 1.45x. ---
+    map.setPaintProperty('plots-circle', 'circle-radius',
+      composite(RADIUS_STOPS, (r) => r * SEL_SCALE, (r) => r));
+    map.setPaintProperty('plots-circle', 'circle-color', ['case', isSel, '#FFFFFF', baseColor]);
     map.setPaintProperty('plots-circle', 'circle-stroke-color', ['case', isSel, '#CE9A52', '#FFFFFF']);
-    map.setPaintProperty('plots-circle', 'circle-stroke-width', ['case', isSel, 3.5, baseStrokeW]);
+    map.setPaintProperty('plots-circle', 'circle-stroke-width',
+      composite(STROKE_STOPS, () => 3.5, (w) => w));
+
+    // --- Layer 1: dim every non-selected plot (and its number) while one is selected. ---
+    if (activePlot) {
+      const dim = ['case', isSel, 1, 0.28];
+      map.setPaintProperty('plots-circle', 'circle-opacity', dim);
+      map.setPaintProperty('plots-circle', 'circle-stroke-opacity', dim);
+      if (map.getLayer('plots-label')) map.setPaintProperty('plots-label', 'text-opacity', 0.28);
+    } else {
+      // Nothing selected — full opacity, but honour an active zone dim if present
+      // (zone state lives in activeZoneRef; its own effect is gated while a plot is up).
+      const zone = activeZoneRef.current;
+      if (zone && zone.plotSet) {
+        const names = [...zone.plotSet];
+        map.setPaintProperty('plots-circle', 'circle-opacity',
+          ['case', ['in', ['get', 'name'], ['literal', names]], 0.9, 0.12]);
+      } else {
+        map.setPaintProperty('plots-circle', 'circle-opacity', 1);
+      }
+      map.setPaintProperty('plots-circle', 'circle-stroke-opacity', 1);
+      if (map.getLayer('plots-label')) map.setPaintProperty('plots-label', 'text-opacity', 1);
+    }
 
     // Glow: soft accent disc behind the selected plot (same gold @0.22, larger radius).
     map.setPaintProperty('plots-glow', 'circle-color', '#CE9A52');
-    map.setPaintProperty('plots-glow', 'circle-radius', ['case', isSel, ['+', baseRadius, 12], 8]);
+    map.setPaintProperty('plots-glow', 'circle-radius',
+      composite(RADIUS_STOPS, (r) => r + 12, () => 8));
     map.setPaintProperty('plots-glow', 'circle-stroke-width', 0);
     map.setPaintProperty('plots-glow', 'circle-opacity', ['case', isSel, 0.22, 0]);
 
-    // Selected plot's number always shows (allow-overlap highlight layer).
+    // Selected plot's number always shows (allow-overlap highlight layer), in gold so
+    // it stays legible on the white fill.
     if (map.getLayer('plots-label-active')) {
       map.setFilter('plots-label-active', ['all',
         ['==', ['get', 'category'], 'saleable'],
         ['!', ['has', 'point_count']],
         ['==', ['get', 'name'], activePlot || '__none__'],
       ]);
+      map.setPaintProperty('plots-label-active', 'text-color', '#CE9A52');
     }
 
     // Highlight amenities when plot is selected
     map.setPaintProperty('amenities-circle', 'circle-radius', ['case', activePlot ? true : false, 7, 5]);
     map.setPaintProperty('amenities-circle', 'circle-stroke-width', ['case', activePlot ? true : false, 2, 1]);
+
+    // --- Layer 3: two white rings pulse out from the selected dot. Translated from the
+    // brief's keyframe — scale 1→2, opacity 0.65→0 over 2s, the second ring 0.75s behind.
+    // The base radius tracks the (1.45x) selected dot so the rings emanate from its edge.
+    let pulseRaf = null;
+    if (map.getLayer('plots-pulse')) {
+      if (activePlot) {
+        const sel = ['all', ['!', ['has', 'point_count']], ['==', ['get', 'name'], activePlot]];
+        map.setFilter('plots-pulse', sel);
+        map.setFilter('plots-pulse-2', sel);
+        map.setPaintProperty('plots-pulse', 'circle-stroke-width', 1.5);
+        map.setPaintProperty('plots-pulse-2', 'circle-stroke-width', 1.5);
+
+        // Ring radius is computed numerically each frame — a zoom "interpolate"
+        // expression can't be nested inside arithmetic for circle-radius, so we read
+        // the live zoom and pass a plain number. Mirrors the RADIUS_STOPS curve × SEL_SCALE
+        // (the selected dot size) so the rings always emanate from the dot's edge.
+        const dotRadiusAt = (z) => {
+          const s = RADIUS_STOPS;
+          let base;
+          if (z <= s[0][0]) base = s[0][1];
+          else if (z >= s[s.length - 1][0]) base = s[s.length - 1][1];
+          else {
+            base = s[s.length - 1][1];
+            for (let i = 0; i < s.length - 1; i++) {
+              if (z >= s[i][0] && z <= s[i + 1][0]) {
+                const f = (z - s[i][0]) / (s[i + 1][0] - s[i][0]);
+                base = s[i][1] + (s[i + 1][1] - s[i][1]) * f;
+                break;
+              }
+            }
+          }
+          return base * SEL_SCALE; // selected dot radius
+        };
+
+        const reduceMotion = typeof window !== 'undefined' && window.matchMedia &&
+          window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        if (reduceMotion) {
+          // Static ring instead of a pulse for reduced-motion users.
+          map.setPaintProperty('plots-pulse', 'circle-radius', dotRadiusAt(map.getZoom()) * 1.5);
+          map.setPaintProperty('plots-pulse', 'circle-stroke-opacity', 0.6);
+        } else {
+          const PERIOD = 2000;   // 2s per ring cycle
+          const OFFSET = 0.375;  // 0.75s of 2s — the second ring's phase lead
+          const start = performance.now();
+          const frame = (now) => {
+            const t = ((now - start) % PERIOD) / PERIOD;
+            const t2 = (t + OFFSET) % 1;
+            const dotR = dotRadiusAt(map.getZoom()); // numeric — tracks zoom per frame
+            map.setPaintProperty('plots-pulse', 'circle-radius', dotR * (1 + t));   // scale 1→2
+            map.setPaintProperty('plots-pulse', 'circle-stroke-opacity', (1 - t) * 0.65);
+            map.setPaintProperty('plots-pulse-2', 'circle-radius', dotR * (1 + t2));
+            map.setPaintProperty('plots-pulse-2', 'circle-stroke-opacity', (1 - t2) * 0.65);
+            pulseRaf = requestAnimationFrame(frame);
+          };
+          pulseRaf = requestAnimationFrame(frame);
+        }
+      } else {
+        // Deselected — park the rings on a no-match filter so nothing draws.
+        map.setFilter('plots-pulse', ['==', ['get', 'name'], '__none__']);
+        map.setFilter('plots-pulse-2', ['==', ['get', 'name'], '__none__']);
+      }
+    }
+
+    return () => { if (pulseRaf) cancelAnimationFrame(pulseRaf); };
   }, [activePlot]);
 
   // Zone highlighting: dim plots outside the selected zone (matched by plot name)
@@ -654,6 +802,9 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, theme, s
     if (!mapRef.current || !mapRef.current.isStyleLoaded()) return;
     const map = mapRef.current;
     if (!map.getLayer('plots-circle')) return;
+    // A selected plot owns circle-opacity (its dimming wins); the highlight effect
+    // restores the zone dim from activeZoneRef when the plot is deselected.
+    if (activePlotRef.current) return;
     if (activeZone && activeZone.plotSet) {
       const names = [...activeZone.plotSet];
       map.setPaintProperty('plots-circle', 'circle-opacity',
@@ -843,7 +994,7 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, theme, s
       <style>{`
         #mwrap { flex: 1; position: relative; background: var(--bg-secondary); transition: background-color 0.3s ease-in-out; }
         #map { width: 100%; height: 100%; transition: opacity 0.3s ease-in-out, filter 0.3s ease-in-out; }
-        #mlabel { position: absolute; top: 24px; left: 24px; z-index: 10; background: var(--glass-bg); backdrop-filter: blur(8px); border: 1px solid var(--brand-gold); padding: 8px 16px; font-size: 10px; letter-spacing: 0.2em; color: var(--brand-gold); transition: all 0.3s ease-in-out; }
+        #mlabel { position: absolute; top: 24px; left: 24px; z-index: 10; background: var(--glass-bg); backdrop-filter: blur(8px); border: 1px solid var(--border-color); padding: 8px 16px; font-size: 10px; letter-spacing: 0.2em; color: var(--text-primary); transition: all 0.3s ease-in-out; }
         #rotate-btn { position: absolute; top: 24px; right: 24px; z-index: 10; background: var(--glass-bg); backdrop-filter: blur(8px); border: 1px solid var(--brand-gold); width: 40px; height: 40px; border-radius: 0; cursor: pointer; font-size: 16px; color: var(--brand-gold); display: flex; align-items: center; justify-content: center; transition: all 0.3s ease-in-out; }
         #rotate-btn:hover { background: var(--brand-gold); color: var(--on-gold); }
         #hint3d { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 10; background: var(--glass-bg); backdrop-filter: blur(8px); border: 1px solid var(--brand-gold); padding: 8px 20px; font-size: 9px; letter-spacing: 0.1em; color: var(--text-primary); pointer-events: none; transition: all 0.3s ease-in-out; }

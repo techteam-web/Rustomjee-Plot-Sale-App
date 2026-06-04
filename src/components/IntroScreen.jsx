@@ -17,8 +17,11 @@ const SEGMENTS = [
   { heading: 'Belle Vue', sub: 'The Beautiful Life' },
 ];
 
-const DESIGN_TOTAL = 14;     // seconds the timings below are authored against
-const NO_VIDEO_SECONDS = 9;  // brisk self-driven length when no video is available
+const DESIGN_TOTAL = 12;      // seconds the timings below are authored against (matches the cut)
+const NO_VIDEO_SECONDS = 10;  // self-driven length when no video is available
+
+// Final-sequence timing (Issue 2), measured back from the ACTUAL video duration.
+const BUTTON_IN_DURATION = 1.4; // Enter button fade-in (the last heading stays on screen)
 
 export default function IntroScreen({ onComplete }) {
   const rootRef = useRef(null);
@@ -31,41 +34,47 @@ export default function IntroScreen({ onComplete }) {
   const tlRef = useRef(null);          // paused master timeline for the heading beats
   const splitsRef = useRef([]);        // SplitText instances per heading
   const scaleRef = useRef(0);          // timeScale derived from real video duration
-  const safetyRef = useRef(null);      // delayedCall fallback if the video never plays
+  const timersRef = useRef([]);        // gsap.delayedCalls to cancel on cleanup
   const startedRef = useRef(false);    // has playback begun (first timeupdate)
   const readyRef = useRef(false);      // is the split + timeline built
-  const buttonShownRef = useRef(false); // has the Enter button been revealed (idempotent)
   const exitingRef = useRef(false);    // is the exit fade running
-  const revealRef = useRef(null);      // reveal-button fn, called from video events
+  const revealRef = useRef(null);      // button-reveal fn (video-end milestone / fallback)
   const exitRef = useRef(null);        // exit fn, called from the button click
   const beginRef = useRef(null);       // starts the heading sequence (play / error / fallback)
+  // Video-end synchronisation (Issue 2): button-reveal milestone from the real duration.
+  const buttonRevealStartRef = useRef(null); // currentTime at which the button reveals
+  const buttonHasRevealed = useRef(false);   // milestone fired (idempotent)
 
   useGSAP(() => {
     let cancelled = false;
 
-    // ---- initial hidden states (set before first paint, no SplitText needed yet)
-    gsap.set(headingRefs.current.filter(Boolean), { opacity: 0 });
-    gsap.set(subRefs.current.filter(Boolean), { opacity: 0, letterSpacing: '0.4em' });
-    gsap.set(buttonRef.current, { opacity: 0, y: prefersReducedMotion ? 0 : 20 });
+    // Track every delayedCall so cleanup can cancel them (StrictMode / unmount).
+    const timer = (delay, fn) => {
+      const t = gsap.delayedCall(delay, fn);
+      timersRef.current.push(t);
+      return t;
+    };
 
-    // Fade the currently-shown heading out and bring the button in. Idempotent so
-    // it can be fired by both onEnded and the timeline tail without doubling up.
+    // ---- initial hidden states (set before first paint, no SplitText needed yet).
+    // force3D pins each element onto its own GPU layer so transforms composite
+    // cleanly (no sub-pixel stutter on the fades).
+    gsap.set(headingRefs.current.filter(Boolean), { opacity: 0, force3D: true });
+    gsap.set(subRefs.current.filter(Boolean), { opacity: 0, letterSpacing: '0.4em', force3D: true });
+    gsap.set(buttonRef.current, { opacity: 0, y: prefersReducedMotion ? 0 : 14, force3D: true });
+
+    // Bring the Enter button in. Idempotent, so the timeupdate milestone and the
+    // onEnded fallback can both call it safely.
     const playButton = () => {
-      if (buttonShownRef.current || exitingRef.current) return;
-      buttonShownRef.current = true;
-      const tl = gsap.timeline();
-      if (!prefersReducedMotion) {
-        const i = SEGMENTS.length - 1; // the last heading is the one on screen
-        const lines = splitsRef.current[i] && splitsRef.current[i].lines;
-        const sub = subRefs.current[i];
-        if (lines) tl.to(lines, { opacity: 0, y: -18, duration: 0.7, ease: 'power2.in', stagger: 0.06 }, 0);
-        if (sub) tl.to(sub, { opacity: 0, duration: 0.5, ease: 'power2.in' }, 0);
-      }
-      tl.to(
-        buttonRef.current,
-        { opacity: 1, y: 0, duration: prefersReducedMotion ? 0.5 : 1.2, ease: 'power3.out' },
-        prefersReducedMotion ? 0 : 0.4
-      );
+      if (buttonHasRevealed.current || exitingRef.current) return;
+      buttonHasRevealed.current = true;
+      gsap.set(buttonRef.current, { opacity: 0, y: prefersReducedMotion ? 0 : 14, force3D: true });
+      gsap.to(buttonRef.current, {
+        opacity: 1,
+        y: 0,
+        duration: BUTTON_IN_DURATION,
+        ease: 'power2.out',
+        force3D: true,
+      });
     };
     revealRef.current = playButton;
 
@@ -78,39 +87,43 @@ export default function IntroScreen({ onComplete }) {
         opacity: 0,
         duration: 0.8,
         ease: 'power2.inOut',
+        force3D: true,
         onComplete: () => { if (typeof onComplete === 'function') onComplete(); },
       });
     };
 
-    // ---- per-heading IN / OUT (the OUT is lighter and quicker, not a mirror)
+    // ---- per-heading IN / OUT — slow and fade-led: opacity carries the motion
+    // with only a whisper of vertical drift (no hard wipes). power2.out breathes
+    // into its final position (gentler tail than expo) to avoid sub-pixel stutter.
     const headingIn = (tl, i, at) => {
       const lines = splitsRef.current[i] && splitsRef.current[i].lines;
       const sub = subRefs.current[i];
-      if (lines) {
-        tl.to(lines, {
-          opacity: 1, y: 0, clipPath: 'inset(0 0 0% 0)',
-          duration: 1.1, ease: 'expo.out', stagger: 0.12,
-        }, at);
-      }
-      // Subheading trails the heading slightly, settling its letter-spacing in.
-      if (sub) tl.to(sub, { opacity: 1, letterSpacing: '0.25em', duration: 1.4, ease: 'power3.out' }, at + 0.25);
+      if (lines) tl.to(lines, {
+        opacity: 1, y: 0, duration: 2.0, ease: 'power2.out', stagger: 0.14, force3D: true,
+        onComplete: () => {
+          // Settled — drop the GPU hint so it doesn't pin a layer for the whole intro.
+          if (headingRefs.current[i]) headingRefs.current[i].style.willChange = 'auto';
+          if (subRefs.current[i]) subRefs.current[i].style.willChange = 'auto';
+        },
+      }, at);
+      // Subheading trails the heading, easing its letter-spacing in.
+      if (sub) tl.to(sub, { opacity: 1, letterSpacing: '0.26em', duration: 1.0, ease: 'power2.out', force3D: true }, at + 0.3);
     };
     const headingOut = (tl, i, at) => {
       const lines = splitsRef.current[i] && splitsRef.current[i].lines;
       const sub = subRefs.current[i];
-      if (lines) tl.to(lines, { opacity: 0, y: -18, duration: 0.7, ease: 'power2.in', stagger: 0.06 }, at);
-      if (sub) tl.to(sub, { opacity: 0, duration: 0.5, ease: 'power2.in' }, at);
+      if (lines) tl.to(lines, { opacity: 0, y: -10, duration: 1.25, ease: 'power1.inOut', stagger: 0.08, force3D: true }, at);
+      if (sub) tl.to(sub, { opacity: 0, duration: 1.05, ease: 'power1.inOut', force3D: true }, at);
     };
 
     const buildSequence = () => {
       const tl = gsap.timeline({ paused: true });
-      headingIn(tl, 0, 1);   // "A Life Above the Ordinary" — in ~1s
-      headingOut(tl, 0, 4);  //                              — out ~4s
-      headingIn(tl, 1, 5);   // "Where Nature Meets Refinement" — in ~5s
-      headingOut(tl, 1, 9);  //                                 — out ~9s
-      headingIn(tl, 2, 10);  // "Belle Vie" — in ~10s, then holds until the video ends
-      // If the cut runs long, still surface the button near the reference end.
-      tl.call(playButton, null, DESIGN_TOTAL - 0.2);
+      headingIn(tl, 0, 0.6);   // "A Life Above the Ordinary"
+      headingOut(tl, 0, 3.1);
+      headingIn(tl, 1, 4.4);   // "Where Nature Meets Refinement"
+      headingOut(tl, 1, 6.9);
+      headingIn(tl, 2, 8.2);   // last heading — stays on screen; the button reveal
+                               // is driven by the video-end milestone, not this timeline.
       return tl;
     };
 
@@ -130,9 +143,9 @@ export default function IntroScreen({ onComplete }) {
           el ? new SplitText(el, { type: 'lines', linesClass: 'intro-line' }) : null
         );
         splitsRef.current.forEach((s) => {
-          if (s) gsap.set(s.lines, { opacity: 0, y: 30, clipPath: 'inset(0 0 100% 0)' });
+          if (s) gsap.set(s.lines, { opacity: 0, y: 16, force3D: true });
         });
-        gsap.set(headingRefs.current.filter(Boolean), { opacity: 1 }); // reveal containers; lines stay hidden
+        gsap.set(headingRefs.current.filter(Boolean), { opacity: 1, force3D: true }); // reveal containers; lines stay hidden
         tlRef.current = buildSequence();
         applyScale();
         readyRef.current = true;
@@ -141,7 +154,7 @@ export default function IntroScreen({ onComplete }) {
         // Splitting should never fail for this copy, but never trap the visitor.
         console.warn('IntroScreen: heading split failed, revealing the button.', err);
         readyRef.current = true;
-        gsap.delayedCall(0.6, () => revealRef.current && revealRef.current());
+        timer(0.6, () => revealRef.current && revealRef.current());
       }
     };
 
@@ -151,6 +164,11 @@ export default function IntroScreen({ onComplete }) {
       if (startedRef.current) return;
       startedRef.current = true;
       if (tlRef.current) { applyScale(); tlRef.current.play(0); }
+      // No real video duration (missing / errored): the timeupdate milestone can't
+      // fire, so reveal the button on a timer instead.
+      if (buttonRevealStartRef.current == null) {
+        timer(NO_VIDEO_SECONDS - BUTTON_IN_DURATION, () => revealRef.current && revealRef.current());
+      }
       // If the timeline is not built yet, build() will play it once it is ready.
     };
     beginRef.current = beginSequence;
@@ -159,9 +177,9 @@ export default function IntroScreen({ onComplete }) {
       // Reduced motion: skip the choreography. Show the final beat statically and
       // ease only the button's opacity in shortly after.
       const last = SEGMENTS.length - 1;
-      if (headingRefs.current[last]) gsap.set(headingRefs.current[last], { opacity: 1 });
-      if (subRefs.current[last]) gsap.set(subRefs.current[last], { opacity: 1, letterSpacing: '0.25em' });
-      safetyRef.current = gsap.delayedCall(0.6, () => revealRef.current && revealRef.current());
+      if (headingRefs.current[last]) gsap.set(headingRefs.current[last], { opacity: 1, force3D: true });
+      if (subRefs.current[last]) gsap.set(subRefs.current[last], { opacity: 1, letterSpacing: '0.25em', force3D: true });
+      timer(0.6, () => revealRef.current && revealRef.current());
     } else {
       const fontsReady =
         typeof document !== 'undefined' && document.fonts && document.fonts.ready
@@ -172,18 +190,19 @@ export default function IntroScreen({ onComplete }) {
       // The video drives the sequence, but if it never reports playback (missing
       // file, blocked autoplay, decode error) we start it ourselves so the splash
       // animates over its backdrop rather than sitting on a dead frame.
-      safetyRef.current = gsap.delayedCall(4, () => beginRef.current && beginRef.current());
+      timer(4, () => beginRef.current && beginRef.current());
     }
 
     return () => {
       cancelled = true;
-      if (safetyRef.current) { safetyRef.current.kill(); safetyRef.current = null; }
+      timersRef.current.forEach((t) => t && t.kill());
+      timersRef.current = [];
       if (tlRef.current) { tlRef.current.kill(); tlRef.current = null; }
       splitsRef.current.forEach((s) => s && s.revert());
       splitsRef.current = [];
       readyRef.current = false;
       startedRef.current = false;
-      buttonShownRef.current = false;
+      buttonHasRevealed.current = false;
     };
   }, { scope: rootRef });
 
@@ -211,24 +230,34 @@ export default function IntroScreen({ onComplete }) {
     const d = v.duration;
     if (d && isFinite(d) && d > 0) {
       // Speed the beats up for a short cut, but never stretch them across a long
-      // brand film: past the reference length the beats finish, the button
-      // appears, and the footage simply keeps rolling behind it.
+      // brand film: past the reference length the beats finish at the authored pace.
       const scale = d < DESIGN_TOTAL ? DESIGN_TOTAL / d : 1;
       scaleRef.current = scale;
       if (tlRef.current) tlRef.current.timeScale(scale);
+      // Button-reveal milestone derived from the ACTUAL duration (Issue 2):
+      buttonRevealStartRef.current = d - BUTTON_IN_DURATION; // button settles as the last frame hits
     }
     tryPlay();
   };
 
   const handleTimeUpdate = () => {
     const v = videoRef.current;
-    if (v && v.currentTime > 0 && beginRef.current) beginRef.current(); // begin is idempotent
+    if (!v) return;
+    if (v.currentTime > 0 && beginRef.current) beginRef.current(); // begin is idempotent
+    // Reveal the button off the ACTUAL playhead so it settles as the video ends.
+    const t = v.currentTime;
+    if (!buttonHasRevealed.current && buttonRevealStartRef.current != null && t >= buttonRevealStartRef.current) {
+      if (revealRef.current) revealRef.current();
+    }
   };
 
   // Missing file / unsupported source / decode failure: don't strand the visitor
-  // on the backdrop — run the sequence self-driven (the button still arrives).
+  // on the backdrop — run the sequence self-driven (the finale still arrives).
   const handleError = () => { if (beginRef.current) beginRef.current(); };
-  const handleEnded = () => { if (revealRef.current) revealRef.current(); };
+  // Fallback only: if timeupdate fired late, make sure the button is in by the end.
+  const handleEnded = () => {
+    if (!buttonHasRevealed.current && revealRef.current) revealRef.current();
+  };
   const handleEnter = () => { if (exitRef.current) exitRef.current(); };
 
   return (
@@ -309,8 +338,13 @@ export default function IntroScreen({ onComplete }) {
           letter-spacing: 0.01em;
           text-transform: none;
           margin: 0;
-          will-change: opacity;
+          /* GPU compositing hints — keep transforms on their own layer and stop
+             sub-pixel text shimmer during the fades. Cleared once the IN settles. */
+          will-change: transform;
+          backface-visibility: hidden;
+          -webkit-font-smoothing: antialiased;
         }
+        .intro-line { backface-visibility: hidden; }
         .intro-sub {
           font-family: 'Sora', sans-serif;
           font-weight: 300;
@@ -319,6 +353,9 @@ export default function IntroScreen({ onComplete }) {
           letter-spacing: 0.25em;
           text-transform: uppercase;
           margin: 1.3rem 0 0;
+          will-change: transform;
+          backface-visibility: hidden;
+          -webkit-font-smoothing: antialiased;
         }
         .intro-enter-wrap {
           position: absolute; top: 65vh; left: 0; right: 0;
@@ -358,6 +395,32 @@ export default function IntroScreen({ onComplete }) {
         @media (max-width: 768px) {
           .intro-enter-wrap { top: 70vh; }
           .intro-enter { font-size: 0.7rem; padding: 14px 30px; letter-spacing: 0.28em; }
+        }
+        @media (max-width: 480px) {
+          /* Smallest phones: ease the floor so the longest heading stays tidy. */
+          .intro-heading { font-size: clamp(1.9rem, 9vw, 2.5rem); }
+          .intro-sub { font-size: 0.66rem; letter-spacing: 0.2em; }
+        }
+        /* The base heading clamp tops out ~1440px. Scale the hero up on large
+           displays so it still commands the frame on 3xl / 4xl / 5xl screens.
+           (Breakpoints mirror index.css: 1920 / 2560 / 3200.) */
+        @media (min-width: 1920px) { /* 3xl */
+          .intro-heading-block { width: min(88vw, 1440px); }
+          .intro-heading { font-size: clamp(5.4rem, 5.2vw, 7rem); }
+          .intro-sub { font-size: clamp(0.95rem, 0.95vw, 1.25rem); }
+          .intro-enter { font-size: 0.95rem; padding: 20px 58px; }
+        }
+        @media (min-width: 2560px) { /* 4xl */
+          .intro-heading-block { width: min(86vw, 1800px); }
+          .intro-heading { font-size: clamp(7rem, 5vw, 9rem); }
+          .intro-sub { font-size: clamp(1.25rem, 0.9vw, 1.6rem); margin-top: 1.8rem; }
+          .intro-enter { font-size: 1.15rem; padding: 24px 70px; letter-spacing: 0.4em; }
+        }
+        @media (min-width: 3200px) { /* 5xl */
+          .intro-heading-block { width: min(84vw, 2200px); }
+          .intro-heading { font-size: clamp(9rem, 4.8vw, 11rem); }
+          .intro-sub { font-size: clamp(1.6rem, 0.85vw, 2rem); margin-top: 2.4rem; }
+          .intro-enter { font-size: 1.4rem; padding: 30px 86px; }
         }
       `}</style>
     </div>
