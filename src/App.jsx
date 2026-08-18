@@ -6,6 +6,7 @@ import PlotDetails from './components/PlotDetails';
 import MasterplanModal from './components/MasterplanModal';
 import NeighbourhoodPanel from './components/NeighbourhoodPanel';
 import NeighbourhoodMap from './components/NeighbourhoodMap';
+import BrandCredit from './components/BrandCredit';
 import { STATUS_LIST, SOLD_NAMES, AMEN } from './data/plots';
 import { calcPrice } from './utils';
 
@@ -209,6 +210,14 @@ function App() {
         show={showMasterplan} 
         onClose={() => setShowMasterplan(false)} 
         theme={theme}
+      />
+
+      {/* Global "powered by" mark — bottom-right on every page/breakpoint.
+          Hidden while the loading screen or the masterplan modal owns the view. */}
+      <BrandCredit
+        page={page}
+        panelOpen={!!activePlot}
+        hidden={loading || showMasterplan}
       />
 
       <style>{`

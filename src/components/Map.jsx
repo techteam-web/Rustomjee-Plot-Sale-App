@@ -293,9 +293,27 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, theme, s
       bearing: -42.2,
       maxPitch: 85,
       antialias: true,
+      attributionControl: false, // re-added below at bottom-left
     });
 
-    map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'bottom-right');
+    // Map chrome lives bottom-LEFT so the bottom-right corner stays free for the
+    // global Brainwing credit mark (see BrandCredit.jsx). MapLibre prepends controls
+    // in bottom corners, so adding attribution first leaves it below the nav buttons.
+    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
+    map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'bottom-left');
+
+    // MapLibre renders the compact attribution EXPANDED and only collapses it on the
+    // first drag, which on a narrow canvas wraps to three lines and climbs into the
+    // bottom-centre hint. Collapse it up front so it rests as a single (i) button;
+    // tapping it still expands the full credits. (`maplibregl-compact-show` is only
+    // re-added by MapLibre before the `maplibregl-compact` class exists, so this sticks.)
+    const collapseAttribution = () => {
+      map.getContainer()
+        .querySelectorAll('.maplibregl-ctrl-attrib.maplibregl-compact-show')
+        .forEach((el) => el.classList.remove('maplibregl-compact-show'));
+    };
+    map.once('load', collapseAttribution);
+    map.once('idle', collapseAttribution);
 
     // Camera capture feature - Press 'C' to log current camera state
     const handleCameraCapture = (e) => {
@@ -843,10 +861,23 @@ export default function Map({ plots, activePlot, onPlotClick, viewMode, theme, s
       <style>{`
         #mwrap { flex: 1; position: relative; background: var(--bg-secondary); transition: background-color 0.3s ease-in-out; }
         #map { width: 100%; height: 100%; transition: opacity 0.3s ease-in-out, filter 0.3s ease-in-out; }
+        /* Reserve the bottom-right corner lane for the Brainwing credit mark:
+           the expanded attribution wraps instead of growing into it. */
+        #mwrap .maplibregl-ctrl-bottom-left { max-width: calc(100% - 220px); }
+        @media (max-width: 1024px) { #mwrap .maplibregl-ctrl-bottom-left { max-width: calc(100% - 175px); } }
+        /* Landscape phones: the map is only a ~150px band between the header and the
+           bottom sheet, so the zoom stack would climb into the corner label. Drop it
+           there — pinch-to-zoom covers it on those devices. Attribution stays. */
+        @media (max-width: 1024px) and (max-height: 500px) { #mwrap .maplibregl-ctrl-group { display: none; } }
         #mlabel { position: absolute; top: 24px; left: 24px; z-index: 10; background: var(--glass-bg); backdrop-filter: blur(8px); border: 1px solid var(--brand-gold); padding: 8px 16px; font-size: 10px; letter-spacing: 0.2em; color: var(--brand-gold); transition: all 0.3s ease-in-out; }
         #rotate-btn { position: absolute; top: 24px; right: 24px; z-index: 10; background: var(--glass-bg); backdrop-filter: blur(8px); border: 1px solid var(--brand-gold); width: 40px; height: 40px; border-radius: 0; cursor: pointer; font-size: 16px; color: var(--brand-gold); display: flex; align-items: center; justify-content: center; transition: all 0.3s ease-in-out; }
         #rotate-btn:hover { background: var(--brand-gold); color: var(--on-gold); }
         #hint3d { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 10; background: var(--glass-bg); backdrop-filter: blur(8px); border: 1px solid var(--brand-gold); padding: 8px 20px; font-size: 9px; letter-spacing: 0.1em; color: var(--text-primary); pointer-events: none; transition: all 0.3s ease-in-out; }
+        /* On a narrow canvas (phones, or desktop with the 340px plot panel open) the
+           centred hint reaches far enough right to touch the Brainwing credit mark in
+           the corner — lift it one row so the two never share a band. */
+        @media (max-width: 1280px) { #hint3d { bottom: 68px; } }
+        @media (max-width: 360px) { #hint3d { padding: 7px 12px; font-size: 8px; } }
       `}</style>
     </div>
   );

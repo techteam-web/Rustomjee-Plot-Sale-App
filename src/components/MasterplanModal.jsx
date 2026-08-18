@@ -152,6 +152,10 @@ export default function MasterplanModal({ show, onClose, theme }) {
           opacity: 0; pointer-events: none; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
         #mpmod.show { opacity: 1; pointer-events: auto; }
+        /* MapLibre re-enables pointer-events on its own controls, which left the
+           closed modal's (invisible) attribution button catching clicks over the
+           live map. Keep the whole hidden modal inert. */
+        #mpmod:not(.show) .maplibregl-ctrl { pointer-events: none; }
         .mpinner {
           background: var(--bg-primary); width: 100%; max-width: 1000px; max-height: 90vh;
           overflow: auto; padding: 48px; position: relative; border-color: var(--gold-b);

@@ -675,8 +675,26 @@ export default function NeighbourhoodMap({
       bearing: HOME_CAMERA.bearing,
       maxPitch: 85,
       antialias: true,
+      attributionControl: false, // re-added below at bottom-left
     });
-    map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'bottom-right');
+    // Map chrome lives bottom-LEFT so the bottom-right corner stays free for the
+    // global Brainwing credit mark (see BrandCredit.jsx). MapLibre prepends controls
+    // in bottom corners, so adding attribution first leaves it below the nav buttons.
+    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
+    map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'bottom-left');
+
+    // MapLibre renders the compact attribution EXPANDED and only collapses it on the
+    // first drag, which on a narrow canvas wraps to three lines and climbs into the
+    // bottom-centre hint. Collapse it up front so it rests as a single (i) button;
+    // tapping it still expands the full credits. (`maplibregl-compact-show` is only
+    // re-added by MapLibre before the `maplibregl-compact` class exists, so this sticks.)
+    const collapseAttribution = () => {
+      map.getContainer()
+        .querySelectorAll('.maplibregl-ctrl-attrib.maplibregl-compact-show')
+        .forEach((el) => el.classList.remove('maplibregl-compact-show'));
+    };
+    map.once('load', collapseAttribution);
+    map.once('idle', collapseAttribution);
 
     const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 12, className: 'mbpop' });
 
@@ -795,6 +813,14 @@ export default function NeighbourhoodMap({
       <style>{`
         #nmap-wrap { flex: 1; position: relative; background: var(--bg-secondary); }
         #nmap { width: 100%; height: 100%; }
+        /* Reserve the bottom-right corner lane for the Brainwing credit mark:
+           the expanded attribution wraps instead of growing into it. */
+        #nmap-wrap .maplibregl-ctrl-bottom-left { max-width: calc(100% - 220px); }
+        @media (max-width: 1024px) { #nmap-wrap .maplibregl-ctrl-bottom-left { max-width: calc(100% - 175px); } }
+        /* Landscape phones: the map is only a ~150px band between the header and the
+           bottom sheet, so the zoom stack would climb into the corner label. Drop it
+           there — pinch-to-zoom covers it on those devices. Attribution stays. */
+        @media (max-width: 1024px) and (max-height: 500px) { #nmap-wrap .maplibregl-ctrl-group { display: none; } }
         #nmap-label { position: absolute; top: 24px; left: 24px; z-index: 10; background: var(--glass-bg); backdrop-filter: blur(8px); border: 1px solid var(--brand-gold); padding: 8px 16px; font-size: 10px; letter-spacing: 0.2em; color: var(--brand-gold); }
         /* Journey waypoint cards — glass / hairline / gold accent, Sora. Colours come from the
            theme CSS variables (--glass-bg / --text-primary / --brand-gold) so they follow the
