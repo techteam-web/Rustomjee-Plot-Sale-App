@@ -192,7 +192,7 @@ export default function Sidebar({
           }
         }
         .sbs { padding: 20px 24px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-        .sbt { font-size: 11px; letter-spacing: 0.2em; color: var(--brand-gold); margin-bottom: 16px; font-weight: 400; }
+        .sbt { font-size: 11px; letter-spacing: 0.2em; color: var(--text-secondary); margin-bottom: 16px; font-weight: 500; }
         .sgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .sc { background: var(--card-bg); border: 1px solid var(--border); padding: 12px; transition: all 0.3s; }
         .sc:hover { background: var(--gold-p); border-color: var(--gold-b); }
@@ -212,9 +212,9 @@ export default function Sidebar({
         .legr:hover, .legr.active { opacity: 1; }
         .ld { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; transition: all 0.3s ease; }
         .ll { font-size: 12px; color: var(--text-secondary); letter-spacing: 0.05em; font-weight: 500; }
-        .lc { margin-left: auto; font-size: 10px; color: var(--brand-gold); font-weight: 400; background: var(--gold-p); padding: 2px 8px; }
+        .lc { margin-left: auto; font-size: 10px; color: var(--text-primary); font-weight: 500; background: var(--card-bg); padding: 2px 8px; }
         .rrow { display: flex; justify-content: space-between; margin-bottom: 8px; }
-        .rv { font-size: 12px; color: var(--brand-gold); font-weight: 400; font-family: 'Inter', sans-serif; }
+        .rv { font-size: 12px; color: var(--text-secondary); font-weight: 500; font-family: 'Inter', sans-serif; }
         .range-container { position: relative; height: 20px; margin-bottom: 12px; }
         input[type=range] { width: 100%; accent-color: var(--brand-gold); height: 2px; cursor: pointer; position: absolute; top: 0; background: transparent; -webkit-appearance: none; }
         input[type=range]::-webkit-slider-runnable-track { background: var(--border); height: 2px; }
@@ -231,7 +231,7 @@ export default function Sidebar({
         .pli.on { background: var(--card-bg); border-left: 4px solid var(--text-secondary); }
         .pln { font-size: 14px; font-weight: 400; color: var(--text-primary); }
         .plm { font-size: 11px; color: var(--gray); margin-top: 4px; }
-        .plp { font-size: 14px; color: var(--brand-gold); text-align: right; }
+        .plp { font-size: 14px; color: var(--text-primary); text-align: right; }
         .pls { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px; text-align: right; font-weight: 400; }
         .pls.available { color: var(--brand-green); }
         .pls.sold { color: var(--gray); }
@@ -243,9 +243,9 @@ export default function Sidebar({
         .conn-icon { font-size: 18px; flex-shrink: 0; }
         .conn-info { flex: 1; }
         .conn-label { font-size: 11px; color: var(--text-primary); font-weight: 600; }
-        .conn-distance { font-size: 12px; color: var(--brand-gold); font-weight: 600; margin-top: 2px; }
+        .conn-distance { font-size: 12px; color: var(--text-primary); font-weight: 600; margin-top: 2px; }
         .conn-time { font-size: 9px; color: var(--gray); margin-top: 1px; }
-        .inv-stat { font-size: 10px; color: var(--brand-gold); margin-bottom: 12px; letter-spacing: 0.05em; }
+        .inv-stat { font-size: 10px; color: var(--text-secondary); margin-bottom: 12px; letter-spacing: 0.05em; }
         @keyframes bounce-dot {
           0%, 100% { transform: translateY(0); }
           25% { transform: translateY(-4px); }

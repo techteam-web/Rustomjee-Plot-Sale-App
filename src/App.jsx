@@ -1,9 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Header from './components/Header';
-import Sidebar from './components/Sidebar';
-import Map from './components/Map';
-import PlotDetails from './components/PlotDetails';
 import MasterplanModal from './components/MasterplanModal';
+import IntroScreen from './components/IntroScreen';
+import PlotPage from './pages/PlotPage';
 import NeighbourhoodPanel from './components/NeighbourhoodPanel';
 import NeighbourhoodMap from './components/NeighbourhoodMap';
 import BrandCredit from './components/BrandCredit';
@@ -11,7 +10,14 @@ import { STATUS_LIST, SOLD_NAMES, AMEN } from './data/plots';
 import { calcPrice } from './utils';
 
 function App() {
-  const [page, setPage] = useState('home');
+  // Page = the tool currently revealed beneath the intro. 'plot' is the destination
+  // of "Enter Experience" and the default landing view; 'explore' is neighbourhood.
+  const [page, setPage] = useState('plot');
+  // Play the video intro on every load / reload (no once-per-session skip).
+  const [showIntro, setShowIntro] = useState(true);
+  // Bumped each time HOME is pressed so IntroScreen re-mounts and replays from the
+  // top, even if the visitor is already sitting on the intro (forcePlay).
+  const [introKey, setIntroKey] = useState(0);
   const [processedPlots, setProcessedPlots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activePlot, setActivePlot] = useState(null);
@@ -82,6 +88,30 @@ function App() {
 
   const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
+  // Intro finished fading out ("Enter Experience") — reveal the plot tool.
+  // page is already 'plot' (default, or set by handleNavigate before a HOME replay).
+  const handleIntroComplete = () => setShowIntro(false);
+
+  // Nav model. 'home' replays the intro and lands on /plot; 'plot' and 'explore'
+  // drop the intro and switch the revealed tool. The active highlight is derived
+  // from currentView below.
+  const handleNavigate = (view) => {
+    if (view === 'home') {
+      setPage('plot');            // intro completes → plot tool
+      setIntroKey((k) => k + 1);  // force a fresh mount → full replay
+      setShowIntro(true);
+    } else if (view === 'plot') {
+      setShowIntro(false);
+      setPage('plot');
+    } else if (view === 'explore') {
+      setShowIntro(false);
+      setPage('explore');
+    }
+  };
+
+  // While the intro overlay is up the app reads as "home"; otherwise it's the page.
+  const currentView = showIntro ? 'home' : page;
+
   // Plot and connectivity views are mutually exclusive — selecting one clears the other
   // so their camera animations never fight and no stale highlight lingers.
   const handleSelectPlot = (name) => {
@@ -129,8 +159,8 @@ function App() {
       <Header
         theme={theme}
         onToggleTheme={toggleTheme}
-        page={page}
-        setPage={setPage}
+        currentView={currentView}
+        onNavigate={handleNavigate}
         onShowMasterplan={() => setShowMasterplan(true)}
         onOpenROI={() => {
           if (!activePlot) alert('Please select a plot first to open the ROI calculator.');
@@ -165,59 +195,46 @@ function App() {
           />
         </div>
       ) : (
-        <div id="app" className="flex flex-1 pt-14">
-          <Sidebar
-            plots={processedPlots}
-            filteredPlots={filteredPlots}
-            activeStatus={activeStatus}
-            setActiveStatus={setActiveStatus}
-            sizeRange={sizeRange}
-            setSizeRange={setSizeRange}
-            sizeChip={sizeChip}
-            setSizeChip={setSizeChip}
-            activePlot={activePlot}
-            onPlotClick={(p) => handleSelectPlot(p ? p.name : null)}
-            viewMode={viewMode}
-            setViewMode={setViewMode}
-            theme={theme}
-            selectedConnectivity={selectedConnectivity}
-            setSelectedConnectivity={handleSelectConnectivity}
-            activeZone={activeZone}
-            onZoneSelect={setActiveZone}
-            onZoneClear={() => setActiveZone(null)}
-            plotElevations={plotElevations}
-          />
-
-          <Map
-            plots={processedPlots}
-            activePlot={activePlot}
-            onPlotClick={(p) => handleSelectPlot(p ? p.name : null)}
-            viewMode={viewMode}
-            theme={theme}
-            selectedConnectivity={selectedConnectivity}
-            activeZone={activeZone}
-          />
-
-          <PlotDetails
-            plot={selectedPlotData}
-            onClose={() => setActivePlot(null)}
-            theme={theme}
-          />
-        </div>
+        <PlotPage
+          plots={processedPlots}
+          filteredPlots={filteredPlots}
+          activeStatus={activeStatus}
+          setActiveStatus={setActiveStatus}
+          sizeRange={sizeRange}
+          setSizeRange={setSizeRange}
+          sizeChip={sizeChip}
+          setSizeChip={setSizeChip}
+          activePlot={activePlot}
+          onPlotClick={(p) => handleSelectPlot(p ? p.name : null)}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          theme={theme}
+          selectedConnectivity={selectedConnectivity}
+          setSelectedConnectivity={handleSelectConnectivity}
+          activeZone={activeZone}
+          onZoneSelect={setActiveZone}
+          onZoneClear={() => setActiveZone(null)}
+          plotElevations={plotElevations}
+          selectedPlotData={selectedPlotData}
+          onClosePlot={() => setActivePlot(null)}
+        />
       )}
 
       <MasterplanModal
-        show={showMasterplan} 
-        onClose={() => setShowMasterplan(false)} 
+        show={showMasterplan}
+        onClose={() => setShowMasterplan(false)}
         theme={theme}
       />
 
-      {/* Global "powered by" mark — bottom-right on every page/breakpoint.
-          Hidden while the loading screen or the masterplan modal owns the view. */}
+      {showIntro && <IntroScreen key={introKey} onComplete={handleIntroComplete} />}
+
+      {/* Global "powered by" mark — bottom-right on every page/breakpoint. Hidden
+          whenever something else owns the view: the intro, the loading screen or
+          the masterplan modal. */}
       <BrandCredit
         page={page}
         panelOpen={!!activePlot}
-        hidden={loading || showMasterplan}
+        hidden={showIntro || loading || showMasterplan}
       />
 
       <style>{`
